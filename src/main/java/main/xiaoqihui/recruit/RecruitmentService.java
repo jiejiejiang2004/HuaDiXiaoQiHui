@@ -3,6 +3,7 @@ package main.xiaoqihui.recruit;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import main.xiaoqihui.common.auth.RedisTokenStore;
 import main.xiaoqihui.common.CommonService;
 import main.xiaoqihui.common.domain.FileRecordEntity;
 import main.xiaoqihui.common.exception.BusinessException;
@@ -30,6 +31,7 @@ public class RecruitmentService {
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
     private final CommonService commonService;
+    private final RedisTokenStore redisTokenStore;
 
     public RecruitmentService(
         RecruitmentMapper recruitmentMapper,
@@ -37,7 +39,8 @@ public class RecruitmentService {
         AuthenticationManager authenticationManager,
         JwtUtil jwtUtil,
         ObjectMapper objectMapper,
-        CommonService commonService
+        CommonService commonService,
+        RedisTokenStore redisTokenStore
     ) {
         this.recruitmentMapper = recruitmentMapper;
         this.passwordEncoder = passwordEncoder;
@@ -45,6 +48,7 @@ public class RecruitmentService {
         this.jwtUtil = jwtUtil;
         this.objectMapper = objectMapper;
         this.commonService = commonService;
+        this.redisTokenStore = redisTokenStore;
     }
 
     @Transactional
@@ -52,11 +56,13 @@ public class RecruitmentService {
         if (Boolean.FALSE.equals(request.agreeProtocol())) {
             throw new BusinessException(1001, "请先同意用户协议");
         }
-        commonService.validateSmsCode(request.mobile(), "REGISTER", request.smsCode());
+        commonService.validateEmailCode(request.email(), "REGISTER", request.emailCode());
         ensureMobileNotExists(request.mobile());
+        ensureEmailNotExists(request.email());
 
         UserEntity user = new UserEntity();
         user.setMobile(request.mobile());
+        user.setEmail(request.email());
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setRealName(request.name());
         user.setIdentityType(request.identity());
@@ -80,26 +86,14 @@ public class RecruitmentService {
     }
 
     @Transactional
-    public Map<String, Object> candidateSmsLogin(SmsLoginRequest request) {
-        commonService.validateSmsCode(request.mobile(), "LOGIN", request.smsCode());
-        UserEntity user = recruitmentMapper.findUserByMobile(request.mobile());
-        boolean isNewUser = false;
-        if (user == null) {
-            user = new UserEntity();
-            user.setMobile(request.mobile());
-            user.setPassword(passwordEncoder.encode("SmsLogin@123"));
-            user.setRealName("新用户" + request.mobile().substring(request.mobile().length() - 4));
-            user.setIdentityType("SOCIAL");
-            user.setUserType("CANDIDATE");
-            user.setStatus("ACTIVE");
-            recruitmentMapper.insertUser(user);
-            isNewUser = true;
-        }
+    public Map<String, Object> candidateEmailLogin(EmailLoginRequest request) {
+        commonService.validateEmailCode(request.email(), "LOGIN", request.emailCode());
+        UserEntity user = getUserByEmail(request.email());
         if (!"CANDIDATE".equals(user.getUserType())) {
             throw new BusinessException(2002, "当前账号不是个人求职者账号");
         }
         Map<String, Object> data = buildTokenResponse(user);
-        data.put("isNewUser", isNewUser);
+        data.put("userName", user.getRealName());
         return data;
     }
 
@@ -108,11 +102,13 @@ public class RecruitmentService {
         if (Boolean.FALSE.equals(request.agreeProtocol())) {
             throw new BusinessException(1001, "请先同意用户协议");
         }
-        commonService.validateSmsCode(request.contactMobile(), "REGISTER", request.smsCode());
+        commonService.validateEmailCode(request.email(), "REGISTER", request.emailCode());
         ensureMobileNotExists(request.contactMobile());
+        ensureEmailNotExists(request.email());
 
         UserEntity user = new UserEntity();
         user.setMobile(request.contactMobile());
+        user.setEmail(request.email());
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setRealName(request.contactName());
         user.setIdentityType("ENTERPRISE");
@@ -147,8 +143,8 @@ public class RecruitmentService {
 
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        commonService.validateSmsCode(request.mobile(), "RESET_PWD", request.smsCode());
-        UserEntity user = getUserByMobile(request.mobile());
+        commonService.validateEmailCode(request.email(), "RESET_PWD", request.emailCode());
+        UserEntity user = getUserByEmail(request.email());
         recruitmentMapper.updateUserPassword(user.getUserId(), passwordEncoder.encode(request.newPassword()));
     }
 
@@ -157,15 +153,17 @@ public class RecruitmentService {
             throw new BusinessException(2001, "用户未登录或Token失效");
         }
         String username = jwtUtil.extractUsernameFromRefreshToken(request.refreshToken());
+        if (!redisTokenStore.validateRefreshToken(username, request.refreshToken())) {
+            throw new BusinessException(2001, "用户未登录或Token失效");
+        }
         UserEntity user = getUserByMobile(username);
-        return Map.of(
-            "accessToken", buildTokenResponse(user).get("accessToken"),
-            "expiresIn", jwtUtil.getAccessExpirationTime() / 1000
-        );
+        Map<String, Object> data = buildTokenResponse(user);
+        return Map.of("accessToken", data.get("accessToken"), "expiresIn", data.get("expiresIn"));
     }
 
     public void logout() {
-        requireLoginUserId();
+        UserEntity user = requireCurrentUser();
+        redisTokenStore.revokeTokens(user.getMobile());
     }
 
     public Map<String, Object> getCurrentProfile() {
@@ -568,8 +566,22 @@ public class RecruitmentService {
         }
     }
 
+    private void ensureEmailNotExists(String email) {
+        if (recruitmentMapper.findUserByEmail(email) != null) {
+            throw new BusinessException(3005, "邮箱已注册");
+        }
+    }
+
     private UserEntity getUserByMobile(String mobile) {
         UserEntity user = recruitmentMapper.findUserByMobile(mobile);
+        if (user == null) {
+            throw new BusinessException(3001, "用户不存在");
+        }
+        return user;
+    }
+
+    private UserEntity getUserByEmail(String email) {
+        UserEntity user = recruitmentMapper.findUserByEmail(email);
         if (user == null) {
             throw new BusinessException(3001, "用户不存在");
         }
@@ -658,10 +670,19 @@ public class RecruitmentService {
             user.getRealName(),
             user.getStatus()
         );
+        String accessToken = jwtUtil.generateAccessToken(loginUser);
+        String refreshToken = jwtUtil.generateRefreshToken(loginUser);
+        redisTokenStore.saveTokens(
+            user.getMobile(),
+            accessToken,
+            jwtUtil.getAccessExpirationTime(),
+            refreshToken,
+            jwtUtil.getRefreshExpirationTime()
+        );
         return new LinkedHashMap<>(Map.of(
             "userId", user.getUserId(),
-            "accessToken", jwtUtil.generateAccessToken(loginUser),
-            "refreshToken", jwtUtil.generateRefreshToken(loginUser),
+            "accessToken", accessToken,
+            "refreshToken", refreshToken,
             "expiresIn", jwtUtil.getAccessExpirationTime() / 1000
         ));
     }

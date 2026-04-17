@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/recruit/api/v1/statistics")
+@RequestMapping("/recruit/api/v1")
 public class StatisticsController {
 
     private final StatisticsService statisticsService;
@@ -18,22 +18,27 @@ public class StatisticsController {
         this.statisticsService = statisticsService;
     }
 
-    @GetMapping("/candidate")
+    @GetMapping("/statistics/candidate")
     public ApiResponse<?> candidateStatistics() {
         return ApiResponse.success(statisticsService.candidateStatistics());
     }
 
-    @GetMapping("/enterprise")
+    @GetMapping("/statistics/enterprise")
     public ApiResponse<?> enterpriseStatistics() {
         return ApiResponse.success(statisticsService.enterpriseStatistics());
     }
 
-    @GetMapping("/platform/overview")
+    @GetMapping("/statistics/platform/overview")
     public ApiResponse<?> platformOverviewStatistics() {
         return ApiResponse.success(statisticsService.platformOverviewStatistics());
     }
 
-    @PostMapping("/export")
+    @GetMapping("/admin/statistics/overview")
+    public ApiResponse<?> adminOverviewStatistics() {
+        return ApiResponse.success(statisticsService.platformOverviewStatistics());
+    }
+
+    @PostMapping("/statistics/export")
     public ApiResponse<?> exportStatistics(@Valid @RequestBody ExportStatisticsRequest request) {
         return ApiResponse.success(statisticsService.exportStatistics(request));
     }

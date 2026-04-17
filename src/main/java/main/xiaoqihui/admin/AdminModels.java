@@ -205,3 +205,118 @@ class AuditLogEntity {
     public LocalDateTime getCreateTime() { return createTime; }
     public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
 }
+
+class AdminBannerEntity {
+    private Long bannerId;
+    private String title;
+    private String imageFileId;
+    private String imageUrl;
+    private String linkUrl;
+    private Integer sort;
+    private String status;
+    private LocalDateTime startTime;
+    private LocalDateTime endTime;
+    private LocalDateTime createTime;
+    private LocalDateTime updateTime;
+
+    public Long getBannerId() { return bannerId; }
+    public void setBannerId(Long bannerId) { this.bannerId = bannerId; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+    public String getImageFileId() { return imageFileId; }
+    public void setImageFileId(String imageFileId) { this.imageFileId = imageFileId; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public String getLinkUrl() { return linkUrl; }
+    public void setLinkUrl(String linkUrl) { this.linkUrl = linkUrl; }
+    public Integer getSort() { return sort; }
+    public void setSort(Integer sort) { this.sort = sort; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public LocalDateTime getStartTime() { return startTime; }
+    public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
+    public LocalDateTime getEndTime() { return endTime; }
+    public void setEndTime(LocalDateTime endTime) { this.endTime = endTime; }
+    public LocalDateTime getCreateTime() { return createTime; }
+    public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
+    public LocalDateTime getUpdateTime() { return updateTime; }
+    public void setUpdateTime(LocalDateTime updateTime) { this.updateTime = updateTime; }
+}
+
+class AdminRoleEntity {
+    private Long roleId;
+    private String roleName;
+    private String roleCode;
+    private String remark;
+    private String status;
+    private LocalDateTime createTime;
+    private LocalDateTime updateTime;
+    private java.util.List<Long> permissionIds;
+
+    public Long getRoleId() { return roleId; }
+    public void setRoleId(Long roleId) { this.roleId = roleId; }
+    public String getRoleName() { return roleName; }
+    public void setRoleName(String roleName) { this.roleName = roleName; }
+    public String getRoleCode() { return roleCode; }
+    public void setRoleCode(String roleCode) { this.roleCode = roleCode; }
+    public String getRemark() { return remark; }
+    public void setRemark(String remark) { this.remark = remark; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public LocalDateTime getCreateTime() { return createTime; }
+    public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
+    public LocalDateTime getUpdateTime() { return updateTime; }
+    public void setUpdateTime(LocalDateTime updateTime) { this.updateTime = updateTime; }
+    public java.util.List<Long> getPermissionIds() { return permissionIds; }
+    public void setPermissionIds(java.util.List<Long> permissionIds) { this.permissionIds = permissionIds; }
+}
+
+class AdminPermissionEntity {
+    private Long permissionId;
+    private String permissionName;
+    private String permissionCode;
+    private String menuKey;
+    private String description;
+    private LocalDateTime createTime;
+
+    public Long getPermissionId() { return permissionId; }
+    public void setPermissionId(Long permissionId) { this.permissionId = permissionId; }
+    public String getPermissionName() { return permissionName; }
+    public void setPermissionName(String permissionName) { this.permissionName = permissionName; }
+    public String getPermissionCode() { return permissionCode; }
+    public void setPermissionCode(String permissionCode) { this.permissionCode = permissionCode; }
+    public String getMenuKey() { return menuKey; }
+    public void setMenuKey(String menuKey) { this.menuKey = menuKey; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public LocalDateTime getCreateTime() { return createTime; }
+    public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
+}
+
+class AdminMessageTemplateEntity {
+    private Long templateId;
+    private String type;
+    private String titleTemplate;
+    private String contentTemplate;
+    private String channels;
+    private String enabled;
+    private LocalDateTime createTime;
+    private LocalDateTime updateTime;
+
+    public Long getTemplateId() { return templateId; }
+    public void setTemplateId(Long templateId) { this.templateId = templateId; }
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
+    public String getTitleTemplate() { return titleTemplate; }
+    public void setTitleTemplate(String titleTemplate) { this.titleTemplate = titleTemplate; }
+    public String getContentTemplate() { return contentTemplate; }
+    public void setContentTemplate(String contentTemplate) { this.contentTemplate = contentTemplate; }
+    public String getChannels() { return channels; }
+    public void setChannels(String channels) { this.channels = channels; }
+    public String getEnabled() { return enabled; }
+    public void setEnabled(String enabled) { this.enabled = enabled; }
+    public LocalDateTime getCreateTime() { return createTime; }
+    public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
+    public LocalDateTime getUpdateTime() { return updateTime; }
+    public void setUpdateTime(LocalDateTime updateTime) { this.updateTime = updateTime; }
+}

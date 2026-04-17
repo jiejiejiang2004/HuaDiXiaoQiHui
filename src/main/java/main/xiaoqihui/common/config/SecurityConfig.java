@@ -85,10 +85,10 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.POST,
-                    "/recruit/api/v1/common/sms/send",
+                    "/recruit/api/v1/common/email/send",
                     "/recruit/api/v1/user/register",
                     "/recruit/api/v1/user/login/password",
-                    "/recruit/api/v1/user/login/sms",
+                    "/recruit/api/v1/user/login/email",
                     "/recruit/api/v1/user/password/reset",
                     "/recruit/api/v1/user/token/refresh",
                     "/recruit/api/v1/enterprise/register",

@@ -2,7 +2,7 @@ package main.xiaoqihui.common;
 
 import jakarta.validation.Valid;
 import main.xiaoqihui.common.api.ApiResponse;
-import main.xiaoqihui.common.domain.SmsSendRequest;
+import main.xiaoqihui.common.domain.EmailSendRequest;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,9 +28,9 @@ public class CommonController {
         return ApiResponse.success(commonService.getDict(dictType));
     }
 
-    @PostMapping("/sms/send")
-    public ApiResponse<?> sendSmsCode(@Valid @RequestBody SmsSendRequest request) {
-        return ApiResponse.success(commonService.sendSmsCode(request));
+    @PostMapping("/email/send")
+    public ApiResponse<?> sendEmailCode(@Valid @RequestBody EmailSendRequest request) {
+        return ApiResponse.success(commonService.sendEmailCode(request));
     }
 
     @PostMapping(value = "/file/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

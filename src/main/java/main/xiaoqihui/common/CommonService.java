@@ -1,9 +1,12 @@
 package main.xiaoqihui.common;
 
+import main.xiaoqihui.common.auth.RedisTokenStore;
 import main.xiaoqihui.common.domain.DictItemResponse;
+import main.xiaoqihui.common.domain.EmailSendRequest;
 import main.xiaoqihui.common.domain.FileRecordEntity;
-import main.xiaoqihui.common.domain.SmsSendRequest;
 import main.xiaoqihui.common.exception.BusinessException;
+import main.xiaoqihui.common.mail.MailSenderService;
+import main.xiaoqihui.common.queue.TaskQueueService;
 import main.xiaoqihui.common.util.SecurityUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -16,12 +19,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.time.LocalDateTime;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class CommonService {
@@ -49,31 +51,46 @@ public class CommonService {
         )
     );
 
-    private static final Map<String, SmsCodeCache> SMS_CACHE = new ConcurrentHashMap<>();
     private static final Set<String> IMAGE_TYPES = Set.of("jpg", "jpeg", "png");
     private static final Set<String> RESUME_TYPES = Set.of("pdf", "doc", "docx");
     private static final Set<String> LICENSE_TYPES = Set.of("jpg", "jpeg", "png", "pdf");
 
     private final CommonMapper commonMapper;
     private final String uploadDir;
+    private final RedisTokenStore redisTokenStore;
+    private final MailSenderService mailSenderService;
+    private final TaskQueueService taskQueueService;
+    private final String emailCodePrefix;
 
-    public CommonService(CommonMapper commonMapper, @Value("${app.upload.dir:uploads}") String uploadDir) {
+    public CommonService(
+        CommonMapper commonMapper,
+        @Value("${app.upload.dir:uploads}") String uploadDir,
+        RedisTokenStore redisTokenStore,
+        MailSenderService mailSenderService,
+        TaskQueueService taskQueueService,
+        @Value("${app.auth.email-code-prefix:xqh:email:code}") String emailCodePrefix
+    ) {
         this.commonMapper = commonMapper;
         this.uploadDir = uploadDir;
+        this.redisTokenStore = redisTokenStore;
+        this.mailSenderService = mailSenderService;
+        this.taskQueueService = taskQueueService;
+        this.emailCodePrefix = emailCodePrefix;
     }
 
-    public Map<String, Object> sendSmsCode(SmsSendRequest request) {
+    public Map<String, Object> sendEmailCode(EmailSendRequest request) {
         String debugCode = "123456";
-        LocalDateTime expireAt = LocalDateTime.now().plusMinutes(5);
-        SMS_CACHE.put(buildSmsKey(request.mobile(), request.scene()), new SmsCodeCache(debugCode, expireAt));
+        redisTokenStore.saveEmailCode(buildEmailKey(request.email(), request.scene()), debugCode, Duration.ofMinutes(5));
+        taskQueueService.submit("email-code-send", () -> mailSenderService.sendVerificationCode(request.email(), request.scene(), debugCode));
         return Map.of("expireSeconds", 300, "debugCode", debugCode);
     }
 
-    public void validateSmsCode(String mobile, String scene, String smsCode) {
-        SmsCodeCache cache = SMS_CACHE.get(buildSmsKey(mobile, scene));
-        if (cache == null || cache.expireAt().isBefore(LocalDateTime.now()) || !cache.code().equals(smsCode)) {
+    public void validateEmailCode(String email, String scene, String emailCode) {
+        String code = redisTokenStore.getEmailCode(buildEmailKey(email, scene));
+        if (code == null || !code.equals(emailCode)) {
             throw new BusinessException(3004, "验证码错误或已过期");
         }
+        redisTokenStore.deleteEmailCode(buildEmailKey(email, scene));
     }
 
     public Map<String, Object> uploadFile(MultipartFile file, String bizType) {
@@ -205,10 +222,7 @@ public class CommonService {
         return filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
     }
 
-    private String buildSmsKey(String mobile, String scene) {
-        return mobile + ":" + scene;
-    }
-
-    private record SmsCodeCache(String code, LocalDateTime expireAt) {
+    private String buildEmailKey(String email, String scene) {
+        return emailCodePrefix + ":" + scene + ":" + email;
     }
 }

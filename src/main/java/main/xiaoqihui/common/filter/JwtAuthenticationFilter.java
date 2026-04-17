@@ -1,6 +1,7 @@
 package main.xiaoqihui.common.filter;
 
 
+import main.xiaoqihui.common.auth.RedisTokenStore;
 import main.xiaoqihui.common.util.JwtUtil;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,11 +22,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final UserDetailsService userDetailsService;
     private final JwtUtil jwtUtil;
+    private final RedisTokenStore redisTokenStore;
 
-    // 构造函数注入
-    public JwtAuthenticationFilter(UserDetailsService userDetailsService, JwtUtil jwtUtil) {
+    public JwtAuthenticationFilter(UserDetailsService userDetailsService, JwtUtil jwtUtil, RedisTokenStore redisTokenStore) {
         this.userDetailsService = userDetailsService;
         this.jwtUtil = jwtUtil;
+        this.redisTokenStore = redisTokenStore;
     }
 
     @Override
@@ -36,7 +38,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String username = jwtUtil.extractUsername(token);
             if (username != null
                 && SecurityContextHolder.getContext().getAuthentication() == null
-                && jwtUtil.validateAccessToken(token)) {
+                && jwtUtil.validateAccessToken(token)
+                && redisTokenStore.validateAccessToken(username, token)) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails, null, userDetails.getAuthorities());

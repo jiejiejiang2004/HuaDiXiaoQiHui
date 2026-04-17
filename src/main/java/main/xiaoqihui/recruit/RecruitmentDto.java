@@ -1,6 +1,7 @@
 package main.xiaoqihui.recruit;
 
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -11,7 +12,8 @@ import java.util.Map;
 
 record CandidateRegisterRequest(
     @NotBlank String mobile,
-    @NotBlank String smsCode,
+    @Email @NotBlank String email,
+    @NotBlank String emailCode,
     @NotBlank String password,
     @NotBlank String identity,
     @NotBlank String name,
@@ -27,7 +29,8 @@ record LoginRequest(
 
 record EnterpriseRegisterRequest(
     @NotBlank String contactMobile,
-    @NotBlank String smsCode,
+    @Email @NotBlank String email,
+    @NotBlank String emailCode,
     @NotBlank String password,
     @NotBlank String contactName,
     @NotBlank String companyName,
@@ -35,15 +38,15 @@ record EnterpriseRegisterRequest(
 ) {
 }
 
-record SmsLoginRequest(
-    @NotBlank String mobile,
-    @NotBlank String smsCode
+record EmailLoginRequest(
+    @Email @NotBlank String email,
+    @NotBlank String emailCode
 ) {
 }
 
 record ResetPasswordRequest(
-    @NotBlank String mobile,
-    @NotBlank String smsCode,
+    @Email @NotBlank String email,
+    @NotBlank String emailCode,
     @NotBlank String newPassword
 ) {
 }

@@ -2,6 +2,9 @@ package main.xiaoqihui.admin;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotEmpty;
+
+import java.util.List;
 
 record AdminStatusUpdateRequest(
     @NotBlank String status,
@@ -49,5 +52,33 @@ record AdminLoginRequest(
 record NoticeStatusUpdateRequest(
     @NotNull Long noticeId,
     @NotBlank String status
+) {
+}
+
+record BannerSaveRequest(
+    @NotBlank String title,
+    @NotBlank String imageFileId,
+    String linkUrl,
+    Integer sort,
+    String startTime,
+    String endTime,
+    String status
+) {
+}
+
+record RoleSaveRequest(
+    @NotBlank String roleName,
+    @NotBlank String roleCode,
+    @NotEmpty List<Long> permissionIds,
+    String remark,
+    String status
+) {
+}
+
+record MessageTemplateUpdateRequest(
+    String titleTemplate,
+    String contentTemplate,
+    List<String> channels,
+    String enabled
 ) {
 }

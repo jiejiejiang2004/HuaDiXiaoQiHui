@@ -1,5 +1,8 @@
 package main.xiaoqihui.admin;
 
+import main.xiaoqihui.common.CommonService;
+import main.xiaoqihui.common.auth.RedisTokenStore;
+import main.xiaoqihui.common.domain.FileRecordEntity;
 import main.xiaoqihui.common.exception.BusinessException;
 import main.xiaoqihui.common.security.LoginUser;
 import main.xiaoqihui.common.util.JwtUtil;
@@ -14,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,19 +27,25 @@ public class AdminService {
 
     private final AdminMapper adminMapper;
     private final RecruitmentMapper recruitmentMapper;
+    private final CommonService commonService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final RedisTokenStore redisTokenStore;
 
     public AdminService(
         AdminMapper adminMapper,
         RecruitmentMapper recruitmentMapper,
+        CommonService commonService,
         PasswordEncoder passwordEncoder,
-        JwtUtil jwtUtil
+        JwtUtil jwtUtil,
+        RedisTokenStore redisTokenStore
     ) {
         this.adminMapper = adminMapper;
         this.recruitmentMapper = recruitmentMapper;
+        this.commonService = commonService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.redisTokenStore = redisTokenStore;
     }
 
     public Map<String, Object> adminLogin(AdminLoginRequest request) {
@@ -60,10 +70,19 @@ public class AdminService {
             user.getStatus()
         );
         Map<String, Object> data = new LinkedHashMap<>();
+        String accessToken = jwtUtil.generateAccessToken(loginUser);
+        String refreshToken = jwtUtil.generateRefreshToken(loginUser);
+        redisTokenStore.saveTokens(
+            user.getMobile(),
+            accessToken,
+            jwtUtil.getAccessExpirationTime(),
+            refreshToken,
+            jwtUtil.getRefreshExpirationTime()
+        );
         data.put("userId", user.getUserId());
         data.put("userName", user.getRealName());
-        data.put("accessToken", jwtUtil.generateAccessToken(loginUser));
-        data.put("refreshToken", jwtUtil.generateRefreshToken(loginUser));
+        data.put("accessToken", accessToken);
+        data.put("refreshToken", refreshToken);
         data.put("expiresIn", jwtUtil.getAccessExpirationTime() / 1000);
         return data;
     }
@@ -259,6 +278,51 @@ public class AdminService {
         adminMapper.deleteCategory(categoryId);
     }
 
+    public Map<String, Object> listBanners() {
+        ensureAdmin();
+        return Map.of("list", adminMapper.listBanners());
+    }
+
+    @Transactional
+    public Map<String, Object> createBanner(BannerSaveRequest request) {
+        ensureAdmin();
+        FileRecordEntity image = commonService.requireFileById(request.imageFileId());
+        AdminBannerEntity banner = new AdminBannerEntity();
+        banner.setTitle(request.title());
+        banner.setImageFileId(image.getFileId());
+        banner.setImageUrl(image.getFileUrl());
+        banner.setLinkUrl(request.linkUrl());
+        banner.setSort(request.sort() == null ? 0 : request.sort());
+        banner.setStatus(defaultIfBlank(request.status(), "ONLINE"));
+        banner.setStartTime(parseDateTime(request.startTime()));
+        banner.setEndTime(parseDateTime(request.endTime()));
+        adminMapper.insertBanner(banner);
+        return Map.of("bannerId", banner.getBannerId());
+    }
+
+    @Transactional
+    public void updateBanner(Long bannerId, BannerSaveRequest request) {
+        ensureAdmin();
+        AdminBannerEntity banner = requireBanner(bannerId);
+        FileRecordEntity image = commonService.requireFileById(request.imageFileId());
+        banner.setTitle(request.title());
+        banner.setImageFileId(image.getFileId());
+        banner.setImageUrl(image.getFileUrl());
+        banner.setLinkUrl(request.linkUrl());
+        banner.setSort(request.sort() == null ? 0 : request.sort());
+        banner.setStatus(defaultIfBlank(request.status(), banner.getStatus()));
+        banner.setStartTime(parseDateTime(request.startTime()));
+        banner.setEndTime(parseDateTime(request.endTime()));
+        adminMapper.updateBanner(banner);
+    }
+
+    @Transactional
+    public void deleteBanner(Long bannerId) {
+        ensureAdmin();
+        requireBanner(bannerId);
+        adminMapper.deleteBanner(bannerId);
+    }
+
     public Map<String, Object> listSystemNotices(String type, String status, int pageNum, int pageSize) {
         return listAuditNotices(status, type, pageNum, pageSize);
     }
@@ -299,6 +363,75 @@ public class AdminService {
         adminMapper.deleteNotice(noticeId);
     }
 
+    public Map<String, Object> listPermissions() {
+        ensureAdmin();
+        return Map.of("list", adminMapper.listPermissions());
+    }
+
+    public Map<String, Object> listRoles() {
+        ensureAdmin();
+        List<AdminRoleEntity> roles = adminMapper.listRoles();
+        roles.forEach(role -> role.setPermissionIds(adminMapper.listRolePermissionIds(role.getRoleId())));
+        return Map.of("list", roles);
+    }
+
+    @Transactional
+    public Map<String, Object> createRole(RoleSaveRequest request) {
+        ensureAdmin();
+        AdminRoleEntity role = new AdminRoleEntity();
+        role.setRoleName(request.roleName());
+        role.setRoleCode(request.roleCode());
+        role.setRemark(request.remark());
+        role.setStatus(defaultIfBlank(request.status(), "ACTIVE"));
+        adminMapper.insertRole(role);
+        replaceRolePermissions(role.getRoleId(), request.permissionIds());
+        return Map.of("roleId", role.getRoleId());
+    }
+
+    @Transactional
+    public void updateRole(Long roleId, RoleSaveRequest request) {
+        ensureAdmin();
+        AdminRoleEntity role = requireRole(roleId);
+        role.setRoleName(request.roleName());
+        role.setRoleCode(request.roleCode());
+        role.setRemark(request.remark());
+        role.setStatus(defaultIfBlank(request.status(), role.getStatus()));
+        adminMapper.updateRole(role);
+        replaceRolePermissions(roleId, request.permissionIds());
+    }
+
+    @Transactional
+    public void deleteRole(Long roleId) {
+        ensureAdmin();
+        requireRole(roleId);
+        adminMapper.deleteRolePermissions(roleId);
+        adminMapper.deleteRole(roleId);
+    }
+
+    public Map<String, Object> listMessageTemplates(String type) {
+        ensureAdmin();
+        return Map.of("list", adminMapper.listMessageTemplates(type));
+    }
+
+    @Transactional
+    public void updateMessageTemplate(Long templateId, MessageTemplateUpdateRequest request) {
+        ensureAdmin();
+        AdminMessageTemplateEntity template = requireMessageTemplate(templateId);
+        if (request.titleTemplate() != null) {
+            template.setTitleTemplate(request.titleTemplate());
+        }
+        if (request.contentTemplate() != null) {
+            template.setContentTemplate(request.contentTemplate());
+        }
+        if (request.channels() != null) {
+            template.setChannels(String.join(",", request.channels()));
+        }
+        if (request.enabled() != null) {
+            template.setEnabled(request.enabled());
+        }
+        adminMapper.updateMessageTemplate(template);
+    }
+
     public Map<String, Object> listAuditLogs(int pageNum, int pageSize) {
         ensureAdmin();
         int offset = (pageNum - 1) * pageSize;
@@ -336,6 +469,30 @@ public class AdminService {
         return notice;
     }
 
+    private AdminBannerEntity requireBanner(Long bannerId) {
+        AdminBannerEntity banner = adminMapper.findBannerById(bannerId);
+        if (banner == null) {
+            throw new BusinessException(9002, "轮播图不存在");
+        }
+        return banner;
+    }
+
+    private AdminRoleEntity requireRole(Long roleId) {
+        AdminRoleEntity role = adminMapper.findRoleById(roleId);
+        if (role == null) {
+            throw new BusinessException(9002, "角色不存在");
+        }
+        return role;
+    }
+
+    private AdminMessageTemplateEntity requireMessageTemplate(Long templateId) {
+        AdminMessageTemplateEntity template = adminMapper.findMessageTemplateById(templateId);
+        if (template == null) {
+            throw new BusinessException(9002, "消息模板不存在");
+        }
+        return template;
+    }
+
     private void writeAuditLog(
         String bizType,
         Long bizId,
@@ -366,6 +523,24 @@ public class AdminService {
         message.setBizId(bizId);
         message.setReadStatus("UNREAD");
         recruitmentMapper.insertMessage(message);
+    }
+
+    private void replaceRolePermissions(Long roleId, List<Long> permissionIds) {
+        adminMapper.deleteRolePermissions(roleId);
+        for (Long permissionId : permissionIds) {
+            adminMapper.insertRolePermission(roleId, permissionId);
+        }
+    }
+
+    private LocalDateTime parseDateTime(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        return LocalDateTime.parse(text, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+    }
+
+    private String defaultIfBlank(String value, String defaultValue) {
+        return value == null || value.isBlank() ? defaultValue : value;
     }
 
     private Map<String, Object> pageData(List<?> list, long total, int pageNum, int pageSize) {

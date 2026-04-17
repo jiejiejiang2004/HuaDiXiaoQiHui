@@ -358,4 +358,135 @@ public interface AdminMapper {
 
     @Select("select count(1) from sys_audit_log")
     long countAuditLogs();
+
+    @Select("""
+        select banner_id, title, image_file_id, image_url, link_url, sort, status, start_time, end_time, create_time, update_time
+        from sys_banner
+        order by sort asc, banner_id desc
+        """)
+    List<AdminBannerEntity> listBanners();
+
+    @Select("""
+        select banner_id, title, image_file_id, image_url, link_url, sort, status, start_time, end_time, create_time, update_time
+        from sys_banner
+        where banner_id = #{bannerId}
+        limit 1
+        """)
+    AdminBannerEntity findBannerById(Long bannerId);
+
+    @Insert("""
+        insert into sys_banner (title, image_file_id, image_url, link_url, sort, status, start_time, end_time)
+        values (#{title}, #{imageFileId}, #{imageUrl}, #{linkUrl}, #{sort}, #{status}, #{startTime}, #{endTime})
+        """)
+    @Options(useGeneratedKeys = true, keyProperty = "bannerId")
+    int insertBanner(AdminBannerEntity banner);
+
+    @Update("""
+        <script>
+        update sys_banner
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="imageFileId != null">image_file_id = #{imageFileId},</if>
+            <if test="imageUrl != null">image_url = #{imageUrl},</if>
+            <if test="linkUrl != null">link_url = #{linkUrl},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="status != null">status = #{status},</if>
+            start_time = #{startTime},
+            end_time = #{endTime},
+            update_time = now()
+        </set>
+        where banner_id = #{bannerId}
+        </script>
+        """)
+    int updateBanner(AdminBannerEntity banner);
+
+    @Delete("delete from sys_banner where banner_id = #{bannerId}")
+    int deleteBanner(Long bannerId);
+
+    @Select("""
+        select role_id, role_name, role_code, remark, status, create_time, update_time
+        from sys_role
+        order by role_id asc
+        """)
+    List<AdminRoleEntity> listRoles();
+
+    @Select("""
+        select role_id, role_name, role_code, remark, status, create_time, update_time
+        from sys_role
+        where role_id = #{roleId}
+        limit 1
+        """)
+    AdminRoleEntity findRoleById(Long roleId);
+
+    @Insert("""
+        insert into sys_role (role_name, role_code, remark, status)
+        values (#{roleName}, #{roleCode}, #{remark}, #{status})
+        """)
+    @Options(useGeneratedKeys = true, keyProperty = "roleId")
+    int insertRole(AdminRoleEntity role);
+
+    @Update("""
+        update sys_role
+        set role_name = #{roleName},
+            role_code = #{roleCode},
+            remark = #{remark},
+            status = #{status},
+            update_time = now()
+        where role_id = #{roleId}
+        """)
+    int updateRole(AdminRoleEntity role);
+
+    @Delete("delete from sys_role where role_id = #{roleId}")
+    int deleteRole(Long roleId);
+
+    @Select("""
+        select permission_id, permission_name, permission_code, menu_key, description, create_time
+        from sys_permission
+        order by permission_id asc
+        """)
+    List<AdminPermissionEntity> listPermissions();
+
+    @Select("select permission_id from sys_role_permission where role_id = #{roleId} order by permission_id asc")
+    List<Long> listRolePermissionIds(Long roleId);
+
+    @Delete("delete from sys_role_permission where role_id = #{roleId}")
+    int deleteRolePermissions(Long roleId);
+
+    @Insert("insert into sys_role_permission (role_id, permission_id) values (#{roleId}, #{permissionId})")
+    int insertRolePermission(@Param("roleId") Long roleId, @Param("permissionId") Long permissionId);
+
+    @Select("""
+        <script>
+        select template_id, type, title_template, content_template, channels, enabled, create_time, update_time
+        from sys_message_template
+        <if test="type != null and type != ''">
+            where type = #{type}
+        </if>
+        order by template_id asc
+        </script>
+        """)
+    List<AdminMessageTemplateEntity> listMessageTemplates(@Param("type") String type);
+
+    @Select("""
+        select template_id, type, title_template, content_template, channels, enabled, create_time, update_time
+        from sys_message_template
+        where template_id = #{templateId}
+        limit 1
+        """)
+    AdminMessageTemplateEntity findMessageTemplateById(Long templateId);
+
+    @Update("""
+        <script>
+        update sys_message_template
+        <set>
+            <if test="titleTemplate != null">title_template = #{titleTemplate},</if>
+            <if test="contentTemplate != null">content_template = #{contentTemplate},</if>
+            <if test="channels != null">channels = #{channels},</if>
+            <if test="enabled != null">enabled = #{enabled},</if>
+            update_time = now()
+        </set>
+        where template_id = #{templateId}
+        </script>
+        """)
+    int updateMessageTemplate(AdminMessageTemplateEntity template);
 }

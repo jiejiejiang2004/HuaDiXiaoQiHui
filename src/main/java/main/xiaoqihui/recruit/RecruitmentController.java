@@ -31,9 +31,9 @@ public class RecruitmentController {
         return ApiResponse.success(recruitmentService.candidateLogin(request));
     }
 
-    @PostMapping("/user/login/sms")
-    public ApiResponse<?> loginCandidateBySms(@Valid @RequestBody SmsLoginRequest request) {
-        return ApiResponse.success(recruitmentService.candidateSmsLogin(request));
+    @PostMapping("/user/login/email")
+    public ApiResponse<?> loginCandidateByEmail(@Valid @RequestBody EmailLoginRequest request) {
+        return ApiResponse.success(recruitmentService.candidateEmailLogin(request));
     }
 
     @PostMapping("/user/password/reset")

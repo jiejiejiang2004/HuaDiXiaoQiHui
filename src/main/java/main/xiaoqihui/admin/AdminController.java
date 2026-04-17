@@ -132,6 +132,28 @@ public class AdminController {
         return ApiResponse.success();
     }
 
+    @GetMapping("/admin/system/banners")
+    public ApiResponse<?> listBanners() {
+        return ApiResponse.success(adminService.listBanners());
+    }
+
+    @PostMapping("/admin/system/banners")
+    public ApiResponse<?> createBanner(@Valid @RequestBody BannerSaveRequest request) {
+        return ApiResponse.success(adminService.createBanner(request));
+    }
+
+    @PutMapping("/admin/system/banners/{bannerId}")
+    public ApiResponse<?> updateBanner(@PathVariable Long bannerId, @Valid @RequestBody BannerSaveRequest request) {
+        adminService.updateBanner(bannerId, request);
+        return ApiResponse.success();
+    }
+
+    @DeleteMapping("/admin/system/banners/{bannerId}")
+    public ApiResponse<?> deleteBanner(@PathVariable Long bannerId) {
+        adminService.deleteBanner(bannerId);
+        return ApiResponse.success();
+    }
+
     @GetMapping("/admin/system/notices")
     public ApiResponse<?> listSystemNotices(
         @RequestParam(required = false) String type,
@@ -156,6 +178,47 @@ public class AdminController {
     @DeleteMapping("/admin/system/notices/{noticeId}")
     public ApiResponse<?> deleteNotice(@PathVariable Long noticeId) {
         adminService.deleteNotice(noticeId);
+        return ApiResponse.success();
+    }
+
+    @GetMapping("/admin/system/permissions")
+    public ApiResponse<?> listPermissions() {
+        return ApiResponse.success(adminService.listPermissions());
+    }
+
+    @GetMapping("/admin/system/roles")
+    public ApiResponse<?> listRoles() {
+        return ApiResponse.success(adminService.listRoles());
+    }
+
+    @PostMapping("/admin/system/roles")
+    public ApiResponse<?> createRole(@Valid @RequestBody RoleSaveRequest request) {
+        return ApiResponse.success(adminService.createRole(request));
+    }
+
+    @PutMapping("/admin/system/roles/{roleId}")
+    public ApiResponse<?> updateRole(@PathVariable Long roleId, @Valid @RequestBody RoleSaveRequest request) {
+        adminService.updateRole(roleId, request);
+        return ApiResponse.success();
+    }
+
+    @DeleteMapping("/admin/system/roles/{roleId}")
+    public ApiResponse<?> deleteRole(@PathVariable Long roleId) {
+        adminService.deleteRole(roleId);
+        return ApiResponse.success();
+    }
+
+    @GetMapping("/admin/system/message/templates")
+    public ApiResponse<?> listMessageTemplates(@RequestParam(required = false) String type) {
+        return ApiResponse.success(adminService.listMessageTemplates(type));
+    }
+
+    @PutMapping("/admin/system/message/templates/{templateId}")
+    public ApiResponse<?> updateMessageTemplate(
+        @PathVariable Long templateId,
+        @RequestBody MessageTemplateUpdateRequest request
+    ) {
+        adminService.updateMessageTemplate(templateId, request);
         return ApiResponse.success();
     }
 

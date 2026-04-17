@@ -62,6 +62,10 @@ public class JwtUtil {
         return accessExpirationTime;
     }
 
+    public long getRefreshExpirationTime() {
+        return refreshExpirationTime;
+    }
+
     private String createToken(Map<String, Object> claims, String subject, String secretKey, long expirationTime) {
         return Jwts.builder()
             .claims(claims)

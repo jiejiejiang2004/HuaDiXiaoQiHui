@@ -15,6 +15,9 @@ public interface RecruitmentMapper {
     @Select("select * from sys_user where mobile = #{mobile} limit 1")
     UserEntity findUserByMobile(String mobile);
 
+    @Select("select * from sys_user where email = #{email} limit 1")
+    UserEntity findUserByEmail(String email);
+
     @Select("select * from sys_user where user_id = #{userId} limit 1")
     UserEntity findUserById(Long userId);
 

@@ -64,7 +64,7 @@ public interface StatisticsMapper {
         from job_application
         where enterprise_id = #{enterpriseId}
           and apply_time >= #{startDate}
-          and apply_time <![CDATA[<=]]> #{endDate}
+          and apply_time <= #{endDate}
         group by date_format(apply_time, '%Y-%m-%d')
         order by day asc
         """)
@@ -124,7 +124,7 @@ public interface StatisticsMapper {
         select date_format(apply_time, '%Y-%m') as day, count(1) as count
         from job_application
         where apply_time >= #{startDate}
-          and apply_time <![CDATA[<=]]> #{endDate}
+          and apply_time <= #{endDate}
         group by date_format(apply_time, '%Y-%m')
         order by day asc
         """)
