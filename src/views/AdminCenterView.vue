@@ -526,6 +526,7 @@ import {
   createCategoryAdmin,
   createRoleAdmin,
   createSystemNotice,
+  downloadGeneratedFile,
   deleteBannerAdmin,
   deleteCategoryAdmin,
   deleteRoleAdmin,
@@ -548,7 +549,6 @@ import {
   updateEnterpriseStatusAdmin,
   uploadCommonFile,
 } from "@/api/recruit";
-import { resolveAssetUrl } from "@/api/http";
 import { clearAuth } from "@/utils/auth";
 
 interface CandidateRecord {
@@ -943,9 +943,9 @@ async function downloadPlatformStatistics() {
     type: "PLATFORM",
     startDate: "2026-01-01",
     endDate: "2026-12-31",
-    format: "csv",
+    format: "xlsx",
   });
-  window.open(resolveAssetUrl(data.downloadUrl), "_blank");
+  await downloadGeneratedFile(data.fileId, data.fileName);
 }
 
 function logout() {

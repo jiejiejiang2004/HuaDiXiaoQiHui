@@ -1,4 +1,4 @@
-import http from "./http";
+import http, { downloadBinaryFile } from "./http";
 
 export function sendEmailCode(payload: Record<string, unknown>) {
   return http.post("/common/email/send", payload);
@@ -94,6 +94,10 @@ export function getResumeDetail(resumeId: number) {
   return http.get(`/resume/${resumeId}`);
 }
 
+export function exportResumePdf(resumeId: number) {
+  return http.get(`/resume/${resumeId}/export/pdf`);
+}
+
 export function applyJob(payload: Record<string, unknown>) {
   return http.post("/apply", payload);
 }
@@ -138,6 +142,13 @@ export function exportStatistics(payload: Record<string, unknown>) {
   return http.post("/statistics/export", payload);
 }
 
+export function downloadGeneratedFile(fileId: string, fileName?: string) {
+  return downloadBinaryFile(
+    `/recruit/api/v1/common/file/download/${fileId}`,
+    fileName
+  );
+}
+
 export function updateEnterpriseInfo(payload: Record<string, unknown>) {
   return http.put("/enterprise/info", payload);
 }
@@ -170,6 +181,10 @@ export function updateEnterpriseApplyStatus(
 
 export function getEnterpriseResumeDetail(resumeId: number) {
   return http.get(`/enterprise/resumes/${resumeId}`);
+}
+
+export function exportEnterpriseResumePdf(resumeId: number) {
+  return http.get(`/enterprise/resumes/${resumeId}/export/pdf`);
 }
 
 export function listCandidates(params: Record<string, unknown>) {

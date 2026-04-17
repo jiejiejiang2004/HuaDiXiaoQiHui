@@ -88,9 +88,12 @@
           <template #header>
             <div class="card-title">
               <span>我的简历</span>
-              <el-button type="primary" @click="saveResume"
-                >保存默认简历</el-button
-              >
+              <div class="header-actions-inline">
+                <el-button @click="downloadResumePdf">导出 PDF</el-button>
+                <el-button type="primary" @click="saveResume"
+                  >保存默认简历</el-button
+                >
+              </div>
             </div>
           </template>
           <el-form label-position="top" :model="resumeForm">
@@ -195,6 +198,8 @@ import { ElMessage } from "element-plus";
 import { useRouter } from "vue-router";
 import {
   createResume,
+  downloadGeneratedFile,
+  exportResumePdf,
   exportStatistics,
   getCandidateStatistics,
   getProfile,
@@ -205,7 +210,6 @@ import {
   updateProfile,
   updateResume,
 } from "@/api/recruit";
-import { resolveAssetUrl } from "@/api/http";
 import { clearAuth } from "@/utils/auth";
 
 interface CandidateProfile {
@@ -357,9 +361,18 @@ async function downloadMyStatistics() {
     type: "CANDIDATE",
     startDate: "2026-01-01",
     endDate: "2026-12-31",
-    format: "csv",
+    format: "xlsx",
   });
-  window.open(resolveAssetUrl(data.downloadUrl), "_blank");
+  await downloadGeneratedFile(data.fileId, data.fileName);
+}
+
+async function downloadResumePdf() {
+  if (!resumeId.value) {
+    ElMessage.warning("请先保存简历");
+    return;
+  }
+  const data = await exportResumePdf(resumeId.value);
+  await downloadGeneratedFile(data.fileId, data.fileName);
 }
 
 async function readAllMessages() {
@@ -421,6 +434,11 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-actions-inline {
+  display: flex;
+  gap: 8px;
 }
 
 .inline-input {

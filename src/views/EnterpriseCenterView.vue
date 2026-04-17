@@ -339,6 +339,9 @@
           <h4>自我评价</h4>
           <p>{{ resumeDetail.selfEvaluation }}</p>
         </div>
+        <el-button type="primary" @click="downloadResumePdfFromEnterprise">
+          导出简历 PDF
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -350,6 +353,8 @@ import { ElMessage, UploadRequestOptions } from "element-plus";
 import { useRouter } from "vue-router";
 import {
   createEnterpriseJob,
+  downloadGeneratedFile,
+  exportEnterpriseResumePdf,
   exportStatistics,
   getEnterpriseAuthStatus,
   getEnterpriseInfo,
@@ -398,6 +403,7 @@ interface EnterpriseApplyRecord {
 }
 
 interface ResumeDetail {
+  resumeId?: number;
   basicInfo?: Record<string, unknown>;
   jobIntention?: Record<string, unknown>;
   educationList?: unknown[];
@@ -508,9 +514,9 @@ async function downloadEnterpriseStatistics() {
     type: "ENTERPRISE",
     startDate: "2026-01-01",
     endDate: "2026-12-31",
-    format: "csv",
+    format: "xlsx",
   });
-  window.open(resolveAssetUrl(data.downloadUrl), "_blank");
+  await downloadGeneratedFile(data.fileId, data.fileName);
 }
 
 async function saveJob() {
@@ -584,6 +590,16 @@ async function handleStatus(applyId: number, status: string) {
 async function openResume(resumeId: number) {
   resumeDetail.value = await getEnterpriseResumeDetail(resumeId);
   resumeVisible.value = true;
+}
+
+async function downloadResumePdfFromEnterprise() {
+  const resumeId = resumeDetail.value?.resumeId as number | undefined;
+  if (!resumeId) {
+    ElMessage.warning("请先查看简历详情");
+    return;
+  }
+  const data = await exportEnterpriseResumePdf(resumeId);
+  await downloadGeneratedFile(data.fileId, data.fileName);
 }
 
 function logout() {
