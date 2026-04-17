@@ -11,6 +11,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -120,6 +121,33 @@ public class CommonService {
             throw new BusinessException(7001, "文件不存在");
         }
         return file;
+    }
+
+    public FileRecordEntity saveGeneratedFile(String bizType, String fileName, String content) {
+        String extension = getExtension(fileName);
+        String fileId = UUID.randomUUID().toString().replace("-", "");
+        String storedName = fileId + "." + extension;
+        Path targetDir = Paths.get(uploadDir, "reports").toAbsolutePath().normalize();
+        Path targetPath = targetDir.resolve(storedName);
+
+        try {
+            Files.createDirectories(targetDir);
+            Files.writeString(targetPath, content, StandardCharsets.UTF_8);
+        } catch (IOException ex) {
+            throw new BusinessException(7001, "报表导出失败");
+        }
+
+        FileRecordEntity entity = new FileRecordEntity();
+        entity.setFileId(fileId);
+        entity.setBizType(bizType);
+        entity.setOriginalName(fileName);
+        entity.setFileUrl("/uploads/reports/" + storedName);
+        entity.setFilePath(targetPath.toString());
+        entity.setFileSize(targetPath.toFile().length());
+        entity.setFileType(extension);
+        entity.setUploaderId(SecurityUtils.getUserId());
+        commonMapper.insertFileRecord(entity);
+        return entity;
     }
 
     public Map<String, Object> getDict(String dictType) {

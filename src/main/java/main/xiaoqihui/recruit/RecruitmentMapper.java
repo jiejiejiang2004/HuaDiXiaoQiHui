@@ -63,6 +63,9 @@ public interface RecruitmentMapper {
     @Select("select * from company_info where user_id = #{userId} limit 1")
     CompanyInfoEntity findCompanyByUserId(Long userId);
 
+    @Select("select enterprise_id from company_info where user_id = #{userId} limit 1")
+    Long findCompanyIdByUserId(Long userId);
+
     @Select("select * from company_info where enterprise_id = #{enterpriseId} limit 1")
     CompanyInfoEntity findCompanyById(Long enterpriseId);
 
