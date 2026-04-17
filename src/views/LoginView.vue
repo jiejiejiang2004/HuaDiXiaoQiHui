@@ -13,30 +13,62 @@
 
       <el-tabs v-model="activeTab" stretch>
         <el-tab-pane label="求职者" name="candidate">
+          <el-radio-group v-model="candidateMode" class="mode-switch">
+            <el-radio-button label="password">密码登录</el-radio-button>
+            <el-radio-button label="sms">验证码登录</el-radio-button>
+          </el-radio-group>
           <el-form label-position="top" :model="candidateForm">
             <el-form-item label="手机号">
               <el-input v-model="candidateForm.mobile" />
             </el-form-item>
-            <el-form-item label="密码">
+            <el-form-item v-if="candidateMode === 'password'" label="密码">
               <el-input
                 v-model="candidateForm.password"
                 type="password"
                 show-password
               />
             </el-form-item>
+            <el-form-item v-else label="短信验证码">
+              <div class="sms-row">
+                <el-input v-model="candidateForm.smsCode" />
+                <el-button @click="sendCode(candidateForm.mobile, 'LOGIN')"
+                  >获取验证码</el-button
+                >
+              </div>
+            </el-form-item>
+            <el-form-item label="注册验证码">
+              <div class="sms-row">
+                <el-input
+                  v-model="candidateForm.registerSmsCode"
+                  placeholder="注册时填写"
+                />
+                <el-button @click="sendCode(candidateForm.mobile, 'REGISTER')"
+                  >发送注册码</el-button
+                >
+              </div>
+            </el-form-item>
             <div class="action-row">
               <el-button
                 type="primary"
                 :loading="candidateLoading"
-                @click="handleCandidateLogin"
-                >登录</el-button
+                @click="handleCandidateSubmit"
+                >{{
+                  candidateMode === "password" ? "登录" : "验证码登录"
+                }}</el-button
               >
               <el-button @click="handleCandidateRegister">快速注册</el-button>
+              <el-button text @click="openResetDialog('candidate')"
+                >找回密码</el-button
+              >
             </div>
           </el-form>
         </el-tab-pane>
 
         <el-tab-pane label="企业用户" name="enterprise">
+          <el-radio-group v-model="enterpriseMode" class="mode-switch">
+            <el-radio-button label="password">密码登录</el-radio-button>
+            <el-radio-button label="sms">短信注册</el-radio-button>
+          </el-radio-group>
           <el-form label-position="top" :model="enterpriseForm">
             <el-form-item label="手机号">
               <el-input v-model="enterpriseForm.mobile" />
@@ -47,6 +79,27 @@
                 type="password"
                 show-password
               />
+            </el-form-item>
+            <el-form-item label="短信验证码">
+              <div class="sms-row">
+                <el-input
+                  v-model="enterpriseForm.smsCode"
+                  :placeholder="
+                    enterpriseMode === 'password'
+                      ? '重置或注册时使用'
+                      : '注册时必填'
+                  "
+                />
+                <el-button
+                  @click="
+                    sendCode(
+                      enterpriseForm.mobile,
+                      enterpriseMode === 'password' ? 'RESET_PWD' : 'REGISTER'
+                    )
+                  "
+                  >获取验证码</el-button
+                >
+              </div>
             </el-form-item>
             <el-form-item label="企业名称">
               <el-input
@@ -59,9 +112,12 @@
                 type="primary"
                 :loading="enterpriseLoading"
                 @click="handleEnterpriseLogin"
-                >登录</el-button
+                >密码登录</el-button
               >
               <el-button @click="handleEnterpriseRegister">快速注册</el-button>
+              <el-button text @click="openResetDialog('enterprise')"
+                >找回密码</el-button
+              >
             </div>
           </el-form>
         </el-tab-pane>
@@ -89,7 +145,42 @@
           </el-form>
         </el-tab-pane>
       </el-tabs>
+
+      <el-alert
+        v-if="lastDebugCode"
+        class="debug-alert"
+        type="success"
+        :closable="false"
+        :title="`当前调试验证码：${lastDebugCode}`"
+      />
     </el-card>
+
+    <el-dialog v-model="resetDialogVisible" title="找回密码" width="420px">
+      <el-form label-position="top" :model="resetForm">
+        <el-form-item label="手机号">
+          <el-input v-model="resetForm.mobile" />
+        </el-form-item>
+        <el-form-item label="短信验证码">
+          <div class="sms-row">
+            <el-input v-model="resetForm.smsCode" />
+            <el-button @click="sendCode(resetForm.mobile, 'RESET_PWD')"
+              >获取验证码</el-button
+            >
+          </div>
+        </el-form-item>
+        <el-form-item label="新密码">
+          <el-input
+            v-model="resetForm.newPassword"
+            type="password"
+            show-password
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="resetDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitResetPassword">完成</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -100,28 +191,45 @@ import { ElMessage } from "element-plus";
 import {
   adminLogin,
   candidateLogin,
+  candidateSmsLogin,
   candidateRegister,
   enterpriseLogin,
   enterpriseRegister,
+  resetEnterprisePassword,
+  resetPassword,
+  sendSmsCode,
 } from "@/api/recruit";
-import { setAccessToken, setUserName, setUserType } from "@/utils/auth";
+import {
+  setAccessToken,
+  setRefreshToken,
+  setUserName,
+  setUserType,
+} from "@/utils/auth";
 
 const route = useRoute();
 const router = useRouter();
 const activeTab = ref((route.query.tab as string) || "candidate");
+const candidateMode = ref("password");
+const enterpriseMode = ref("password");
 const candidateLoading = ref(false);
 const enterpriseLoading = ref(false);
 const adminLoading = ref(false);
+const resetDialogVisible = ref(false);
+const resetTarget = ref<"candidate" | "enterprise">("candidate");
+const lastDebugCode = ref("");
 
 const candidateForm = reactive({
   mobile: "13812345678",
   password: "Abc@123456",
+  smsCode: "",
+  registerSmsCode: "",
 });
 
 const enterpriseForm = reactive({
   mobile: "13912345678",
   password: "Abc@123456",
   companyName: "成都校企科技有限公司",
+  smsCode: "",
 });
 
 const adminForm = reactive({
@@ -129,18 +237,78 @@ const adminForm = reactive({
   password: "Admin@123456",
 });
 
+const resetForm = reactive({
+  mobile: "",
+  smsCode: "",
+  newPassword: "",
+});
+
+function saveLoginState(
+  userType: "CANDIDATE" | "ENTERPRISE" | "ADMIN",
+  data: Record<string, unknown>,
+  userName: string,
+  redirectPath: string
+) {
+  const accessToken = String(data.accessToken || "");
+  const refreshToken = String(data.refreshToken || "");
+  setAccessToken(accessToken);
+  if (refreshToken) {
+    setRefreshToken(refreshToken);
+  }
+  setUserType(userType);
+  setUserName(userName);
+  router.push(redirectPath);
+}
+
+async function sendCode(mobile: string, scene: string) {
+  if (!mobile) {
+    ElMessage.warning("请先输入手机号");
+    return;
+  }
+  const data = await sendSmsCode({
+    mobile,
+    scene,
+    captcha: "A3F9",
+    captchaKey: "debug-captcha",
+  });
+  lastDebugCode.value = data.debugCode || "";
+  ElMessage.success(`验证码已发送，有效期 ${data.expireSeconds} 秒`);
+}
+
 async function handleCandidateLogin() {
   candidateLoading.value = true;
   try {
-    const data = await candidateLogin(candidateForm);
-    setAccessToken(data.accessToken);
-    setUserType("CANDIDATE");
-    setUserName(data.userName || "求职者");
+    const data = await candidateLogin({
+      mobile: candidateForm.mobile,
+      password: candidateForm.password,
+    });
+    saveLoginState("CANDIDATE", data, data.userName || "求职者", "/candidate");
     ElMessage.success("登录成功");
-    router.push("/candidate");
   } finally {
     candidateLoading.value = false;
   }
+}
+
+async function handleCandidateSmsLogin() {
+  candidateLoading.value = true;
+  try {
+    const data = await candidateSmsLogin({
+      mobile: candidateForm.mobile,
+      smsCode: candidateForm.smsCode,
+    });
+    saveLoginState("CANDIDATE", data, "求职者", "/candidate");
+    ElMessage.success(data.isNewUser ? "登录成功，已自动创建账号" : "登录成功");
+  } finally {
+    candidateLoading.value = false;
+  }
+}
+
+async function handleCandidateSubmit() {
+  if (candidateMode.value === "password") {
+    await handleCandidateLogin();
+    return;
+  }
+  await handleCandidateSmsLogin();
 }
 
 async function handleCandidateRegister() {
@@ -148,16 +316,14 @@ async function handleCandidateRegister() {
   try {
     const data = await candidateRegister({
       mobile: candidateForm.mobile,
+      smsCode: candidateForm.registerSmsCode,
       password: candidateForm.password,
       identity: "STUDENT",
       name: "测试求职者",
       agreeProtocol: true,
     });
-    setAccessToken(data.accessToken);
-    setUserType("CANDIDATE");
-    setUserName("测试求职者");
+    saveLoginState("CANDIDATE", data, "测试求职者", "/candidate");
     ElMessage.success("注册成功");
-    router.push("/candidate");
   } finally {
     candidateLoading.value = false;
   }
@@ -170,11 +336,13 @@ async function handleEnterpriseLogin() {
       mobile: enterpriseForm.mobile,
       password: enterpriseForm.password,
     });
-    setAccessToken(data.accessToken);
-    setUserType("ENTERPRISE");
-    setUserName(enterpriseForm.companyName || "企业用户");
+    saveLoginState(
+      "ENTERPRISE",
+      data,
+      enterpriseForm.companyName || "企业用户",
+      "/enterprise"
+    );
     ElMessage.success("登录成功");
-    router.push("/enterprise");
   } finally {
     enterpriseLoading.value = false;
   }
@@ -185,16 +353,19 @@ async function handleEnterpriseRegister() {
   try {
     const data = await enterpriseRegister({
       contactMobile: enterpriseForm.mobile,
+      smsCode: enterpriseForm.smsCode,
       password: enterpriseForm.password,
       contactName: "企业联系人",
       companyName: enterpriseForm.companyName,
       agreeProtocol: true,
     });
-    setAccessToken(data.accessToken);
-    setUserType("ENTERPRISE");
-    setUserName(enterpriseForm.companyName || "企业用户");
+    saveLoginState(
+      "ENTERPRISE",
+      data,
+      enterpriseForm.companyName || "企业用户",
+      "/enterprise"
+    );
     ElMessage.success("注册成功");
-    router.push("/enterprise");
   } finally {
     enterpriseLoading.value = false;
   }
@@ -204,14 +375,30 @@ async function handleAdminLogin() {
   adminLoading.value = true;
   try {
     const data = await adminLogin(adminForm);
-    setAccessToken(data.accessToken);
-    setUserType("ADMIN");
-    setUserName(data.userName || "平台管理员");
+    saveLoginState("ADMIN", data, data.userName || "平台管理员", "/admin");
     ElMessage.success("管理员登录成功");
-    router.push("/admin");
   } finally {
     adminLoading.value = false;
   }
+}
+
+function openResetDialog(target: "candidate" | "enterprise") {
+  resetTarget.value = target;
+  resetForm.mobile =
+    target === "candidate" ? candidateForm.mobile : enterpriseForm.mobile;
+  resetForm.smsCode = "";
+  resetForm.newPassword = "";
+  resetDialogVisible.value = true;
+}
+
+async function submitResetPassword() {
+  if (resetTarget.value === "candidate") {
+    await resetPassword(resetForm);
+  } else {
+    await resetEnterprisePassword(resetForm);
+  }
+  ElMessage.success("密码重置成功，请重新登录");
+  resetDialogVisible.value = false;
 }
 </script>
 
@@ -227,7 +414,7 @@ async function handleAdminLogin() {
 
 .login-card {
   width: 100%;
-  max-width: 560px;
+  max-width: 640px;
   border-radius: 20px;
 }
 
@@ -250,5 +437,21 @@ async function handleAdminLogin() {
 .action-row {
   display: flex;
   gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.mode-switch {
+  margin-bottom: 16px;
+}
+
+.sms-row {
+  display: flex;
+  width: 100%;
+  gap: 12px;
+}
+
+.debug-alert {
+  margin-top: 16px;
 }
 </style>

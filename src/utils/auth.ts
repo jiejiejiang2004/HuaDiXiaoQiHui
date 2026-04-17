@@ -1,6 +1,7 @@
 export type UserType = "CANDIDATE" | "ENTERPRISE" | "ADMIN" | "";
 
 const ACCESS_TOKEN_KEY = "xqh_access_token";
+const REFRESH_TOKEN_KEY = "xqh_refresh_token";
 const USER_TYPE_KEY = "xqh_user_type";
 const USER_NAME_KEY = "xqh_user_name";
 
@@ -14,6 +15,18 @@ export function setAccessToken(token: string): void {
 
 export function clearAccessToken(): void {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
+}
+
+export function getRefreshToken(): string {
+  return localStorage.getItem(REFRESH_TOKEN_KEY) || "";
+}
+
+export function setRefreshToken(token: string): void {
+  localStorage.setItem(REFRESH_TOKEN_KEY, token);
+}
+
+export function clearRefreshToken(): void {
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
 export function getUserType(): UserType {
@@ -42,6 +55,7 @@ export function clearUserName(): void {
 
 export function clearAuth(): void {
   clearAccessToken();
+  clearRefreshToken();
   clearUserType();
   clearUserName();
 }

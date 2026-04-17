@@ -16,6 +16,25 @@
         <el-card shadow="hover">
           <template #header>企业信息</template>
           <el-form label-position="top" :model="enterpriseForm">
+            <el-alert
+              :title="`认证状态：${enterprise.authStatus || 'UNAUTH'}`"
+              :type="
+                enterprise.authStatus === 'PASS'
+                  ? 'success'
+                  : enterprise.authStatus === 'REJECT'
+                  ? 'error'
+                  : 'warning'
+              "
+              :closable="false"
+              class="auth-alert"
+            />
+            <el-alert
+              v-if="enterprise.rejectReason"
+              :title="`驳回原因：${enterprise.rejectReason}`"
+              type="error"
+              :closable="false"
+              class="auth-alert"
+            />
             <el-form-item label="企业名称">
               <el-input v-model="enterprise.companyName" disabled />
             </el-form-item>
@@ -42,6 +61,48 @@
               >保存企业信息</el-button
             >
           </el-form>
+
+          <el-divider>企业认证资料</el-divider>
+          <el-form label-position="top" :model="authForm">
+            <el-form-item label="企业全称">
+              <el-input v-model="authForm.companyName" />
+            </el-form-item>
+            <el-form-item label="统一社会信用代码">
+              <el-input v-model="authForm.creditCode" />
+            </el-form-item>
+            <el-form-item label="法人姓名">
+              <el-input v-model="authForm.legalPerson" />
+            </el-form-item>
+            <el-form-item label="营业执照">
+              <el-upload
+                action="#"
+                :show-file-list="false"
+                :http-request="uploadLicenseRequest"
+              >
+                <el-button>上传营业执照</el-button>
+              </el-upload>
+              <div v-if="authPreview.licenseUrl" class="upload-preview">
+                <a
+                  :href="resolveAssetUrl(authPreview.licenseUrl)"
+                  target="_blank"
+                  >查看已上传营业执照</a
+                >
+              </div>
+            </el-form-item>
+            <el-form-item label="企业 Logo">
+              <el-upload
+                action="#"
+                :show-file-list="false"
+                :http-request="uploadLogoRequest"
+              >
+                <el-button>上传 Logo</el-button>
+              </el-upload>
+              <div v-if="authPreview.logoUrl" class="upload-preview">
+                <img :src="resolveAssetUrl(authPreview.logoUrl)" alt="logo" />
+              </div>
+            </el-form-item>
+            <el-button type="success" @click="submitAuth">提交认证</el-button>
+          </el-form>
         </el-card>
       </el-col>
 
@@ -50,9 +111,21 @@
           <template #header>
             <div class="card-title">
               <span>发布职位</span>
-              <el-button type="primary" @click="saveJob">保存职位</el-button>
+              <el-button
+                type="primary"
+                :disabled="enterprise.authStatus !== 'PASS'"
+                @click="saveJob"
+                >保存职位</el-button
+              >
             </div>
           </template>
+          <el-alert
+            v-if="enterprise.authStatus !== 'PASS'"
+            title="企业认证通过后才能发布职位"
+            type="warning"
+            :closable="false"
+            class="auth-alert"
+          />
           <el-form label-position="top" :model="jobForm">
             <el-row :gutter="12">
               <el-col :span="12">
@@ -228,18 +301,22 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
-import { ElMessage } from "element-plus";
+import { computed, onMounted, reactive, ref } from "vue";
+import { ElMessage, UploadRequestOptions } from "element-plus";
 import { useRouter } from "vue-router";
 import {
   createEnterpriseJob,
+  getEnterpriseAuthStatus,
   getEnterpriseInfo,
   getEnterpriseResumeDetail,
   listEnterpriseApplies,
   listEnterpriseJobs,
+  submitEnterpriseAuth,
+  uploadCommonFile,
   updateEnterpriseApplyStatus,
   updateEnterpriseInfo,
 } from "@/api/recruit";
+import { resolveAssetUrl } from "@/api/http";
 import { clearAuth } from "@/utils/auth";
 
 interface EnterpriseInfo {
@@ -249,6 +326,13 @@ interface EnterpriseInfo {
   address?: string;
   introduction?: string;
   website?: string;
+  logo?: string;
+  authStatus?: string;
+  rejectReason?: string;
+  creditCode?: string;
+  legalPerson?: string;
+  licenseImage?: string;
+  logoFileUrl?: string;
 }
 
 interface EnterpriseJobRecord {
@@ -293,12 +377,24 @@ interface EnterpriseJobForm {
 const router = useRouter();
 const welfareOptions = ["双休", "五险一金", "带薪年假", "年度体检", "餐补"];
 const enterprise = reactive<EnterpriseInfo>({});
+const authReady = computed(() => enterprise.authStatus === "PASS");
 const enterpriseForm = reactive({
   industry: "互联网",
   scale: "20-99",
   address: "成都市郫都区",
   introduction: "聚焦校企人才服务与数字招聘。",
   website: "https://example.com",
+});
+const authForm = reactive({
+  companyName: "成都校企科技有限公司",
+  creditCode: "91510100MA6TEST001",
+  legalPerson: "李四",
+  licenseFileId: "",
+  logoFileId: "",
+});
+const authPreview = reactive({
+  licenseUrl: "",
+  logoUrl: "",
 });
 const jobs = ref<EnterpriseJobRecord[]>([]);
 const applications = ref<EnterpriseApplyRecord[]>([]);
@@ -321,13 +417,24 @@ const jobForm = reactive<EnterpriseJobForm>({
 });
 
 async function loadEnterpriseInfo() {
-  const data = await getEnterpriseInfo();
+  const [data, authStatus] = await Promise.all([
+    getEnterpriseInfo(),
+    getEnterpriseAuthStatus(),
+  ]);
   Object.assign(enterprise, data);
+  Object.assign(enterprise, authStatus);
   enterpriseForm.industry = data.industry || "";
   enterpriseForm.scale = data.scale || "";
   enterpriseForm.address = data.address || "";
   enterpriseForm.introduction = data.introduction || "";
   enterpriseForm.website = data.website || "";
+  authForm.companyName = data.companyName || authForm.companyName;
+  authForm.creditCode = data.creditCode || authForm.creditCode;
+  authForm.legalPerson = data.legalPerson || authForm.legalPerson;
+  authForm.licenseFileId = data.licenseFileId || "";
+  authForm.logoFileId = data.logoFileId || "";
+  authPreview.licenseUrl = data.licenseImage || "";
+  authPreview.logoUrl = data.logo || data.logoFileUrl || "";
 }
 
 async function saveEnterpriseInfo() {
@@ -337,9 +444,49 @@ async function saveEnterpriseInfo() {
 }
 
 async function saveJob() {
+  if (!authReady.value) {
+    ElMessage.warning("企业认证通过后才能发布职位");
+    return;
+  }
   await createEnterpriseJob(jobForm);
   ElMessage.success("职位已发布");
   await loadJobs();
+}
+
+async function uploadLicenseRequest(option: UploadRequestOptions) {
+  const data = await uploadCommonFile(option.file as File, "LICENSE");
+  authForm.licenseFileId = data.fileId;
+  authPreview.licenseUrl = data.fileUrl;
+  ElMessage.success("营业执照上传成功");
+}
+
+async function uploadLogoRequest(option: UploadRequestOptions) {
+  const data = await uploadCommonFile(option.file as File, "LOGO");
+  authForm.logoFileId = data.fileId;
+  authPreview.logoUrl = data.fileUrl;
+  ElMessage.success("Logo 上传成功");
+}
+
+async function submitAuth() {
+  if (!authForm.licenseFileId) {
+    ElMessage.warning("请先上传营业执照");
+    return;
+  }
+  const data = await submitEnterpriseAuth({
+    companyName: authForm.companyName,
+    creditCode: authForm.creditCode,
+    legalPerson: authForm.legalPerson,
+    licenseFileId: authForm.licenseFileId,
+    industry: enterpriseForm.industry,
+    scale: enterpriseForm.scale,
+    address: enterpriseForm.address,
+    introduction: enterpriseForm.introduction,
+    logoFileId: authForm.logoFileId,
+    website: enterpriseForm.website,
+  });
+  enterprise.authStatus = data.authStatus;
+  ElMessage.success("认证资料已提交，请等待审核");
+  await loadEnterpriseInfo();
 }
 
 async function loadJobs() {
@@ -408,6 +555,10 @@ onMounted(async () => {
   gap: 12px;
 }
 
+.auth-alert {
+  margin-bottom: 12px;
+}
+
 .section-gap {
   margin-top: 16px;
 }
@@ -431,5 +582,17 @@ onMounted(async () => {
   margin: 0;
   line-height: 1.8;
   white-space: pre-wrap;
+}
+
+.upload-preview {
+  margin-top: 8px;
+}
+
+.upload-preview img {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid #e5e7eb;
 }
 </style>

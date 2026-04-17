@@ -1,11 +1,46 @@
 import http from "./http";
 
+export function sendSmsCode(payload: Record<string, unknown>) {
+  return http.post("/common/sms/send", payload);
+}
+
+export function uploadCommonFile(file: File, bizType: string) {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("bizType", bizType);
+  return http.post("/common/file/upload", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+}
+
+export function getDict(dictType: string) {
+  return http.get(`/common/dict/${dictType}`);
+}
+
 export function candidateRegister(payload: Record<string, unknown>) {
   return http.post("/user/register", payload);
 }
 
 export function candidateLogin(payload: Record<string, unknown>) {
   return http.post("/user/login/password", payload);
+}
+
+export function candidateSmsLogin(payload: Record<string, unknown>) {
+  return http.post("/user/login/sms", payload);
+}
+
+export function resetPassword(payload: Record<string, unknown>) {
+  return http.post("/user/password/reset", payload);
+}
+
+export function refreshToken(payload: Record<string, unknown>) {
+  return http.post("/user/token/refresh", payload);
+}
+
+export function logoutRequest() {
+  return http.post("/user/logout");
 }
 
 export function enterpriseRegister(payload: Record<string, unknown>) {
@@ -18,6 +53,10 @@ export function adminLogin(payload: Record<string, unknown>) {
 
 export function enterpriseLogin(payload: Record<string, unknown>) {
   return http.post("/enterprise/login", payload);
+}
+
+export function resetEnterprisePassword(payload: Record<string, unknown>) {
+  return http.post("/enterprise/password/reset", payload);
 }
 
 export function getProfile() {
@@ -73,6 +112,14 @@ export function markMessagesRead(payload?: Record<string, unknown>) {
 
 export function getEnterpriseInfo() {
   return http.get("/enterprise/info");
+}
+
+export function submitEnterpriseAuth(payload: Record<string, unknown>) {
+  return http.post("/enterprise/auth", payload);
+}
+
+export function getEnterpriseAuthStatus() {
+  return http.get("/enterprise/auth/status");
 }
 
 export function updateEnterpriseInfo(payload: Record<string, unknown>) {
