@@ -85,17 +85,24 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.POST,
+                    "/recruit/api/v1/common/sms/send",
                     "/recruit/api/v1/user/register",
                     "/recruit/api/v1/user/login/password",
+                    "/recruit/api/v1/user/login/sms",
+                    "/recruit/api/v1/user/password/reset",
+                    "/recruit/api/v1/user/token/refresh",
                     "/recruit/api/v1/enterprise/register",
                     "/recruit/api/v1/enterprise/login",
+                    "/recruit/api/v1/enterprise/password/reset",
                     "/recruit/api/v1/admin/login"
                 ).permitAll()
                 .requestMatchers("/recruit/api/v1/admin/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET,
+                    "/recruit/api/v1/common/dict/*",
                     "/recruit/api/v1/home/jobs/search",
                     "/recruit/api/v1/jobs/search",
-                    "/recruit/api/v1/jobs/*"
+                    "/recruit/api/v1/jobs/*",
+                    "/uploads/*"
                 ).permitAll()
                 .anyRequest().authenticated()
             );

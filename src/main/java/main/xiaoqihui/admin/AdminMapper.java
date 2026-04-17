@@ -1,5 +1,6 @@
 package main.xiaoqihui.admin;
 
+import main.xiaoqihui.recruit.CompanyAuthEntity;
 import main.xiaoqihui.recruit.UserEntity;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
@@ -128,6 +129,9 @@ public interface AdminMapper {
         """)
     AdminEnterpriseView findEnterpriseById(Long enterpriseId);
 
+    @Select("select * from company_auth where company_id = #{companyId} order by auth_id desc limit 1")
+    CompanyAuthEntity findLatestCompanyAuth(Long companyId);
+
     @Update("""
         <script>
         update company_info
@@ -145,6 +149,22 @@ public interface AdminMapper {
         </script>
         """)
     int updateEnterprise(AdminEnterpriseView enterpriseView);
+
+    @Update("""
+        update company_auth
+        set audit_status = #{auditStatus},
+            audit_remark = #{auditRemark},
+            audit_time = now(),
+            auditor_id = #{auditorId},
+            update_time = now()
+        where auth_id = #{authId}
+        """)
+    int updateCompanyAuthAudit(
+        @Param("authId") Long authId,
+        @Param("auditStatus") String auditStatus,
+        @Param("auditRemark") String auditRemark,
+        @Param("auditorId") Long auditorId
+    );
 
     @Select("""
         <script>

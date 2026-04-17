@@ -3,6 +3,8 @@ package main.xiaoqihui.recruit;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import main.xiaoqihui.common.CommonService;
+import main.xiaoqihui.common.domain.FileRecordEntity;
 import main.xiaoqihui.common.exception.BusinessException;
 import main.xiaoqihui.common.security.LoginUser;
 import main.xiaoqihui.common.util.JwtUtil;
@@ -27,19 +29,22 @@ public class RecruitmentService {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
+    private final CommonService commonService;
 
     public RecruitmentService(
         RecruitmentMapper recruitmentMapper,
         PasswordEncoder passwordEncoder,
         AuthenticationManager authenticationManager,
         JwtUtil jwtUtil,
-        ObjectMapper objectMapper
+        ObjectMapper objectMapper,
+        CommonService commonService
     ) {
         this.recruitmentMapper = recruitmentMapper;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
         this.objectMapper = objectMapper;
+        this.commonService = commonService;
     }
 
     @Transactional
@@ -47,6 +52,7 @@ public class RecruitmentService {
         if (Boolean.FALSE.equals(request.agreeProtocol())) {
             throw new BusinessException(1001, "请先同意用户协议");
         }
+        commonService.validateSmsCode(request.mobile(), "REGISTER", request.smsCode());
         ensureMobileNotExists(request.mobile());
 
         UserEntity user = new UserEntity();
@@ -74,10 +80,35 @@ public class RecruitmentService {
     }
 
     @Transactional
+    public Map<String, Object> candidateSmsLogin(SmsLoginRequest request) {
+        commonService.validateSmsCode(request.mobile(), "LOGIN", request.smsCode());
+        UserEntity user = recruitmentMapper.findUserByMobile(request.mobile());
+        boolean isNewUser = false;
+        if (user == null) {
+            user = new UserEntity();
+            user.setMobile(request.mobile());
+            user.setPassword(passwordEncoder.encode("SmsLogin@123"));
+            user.setRealName("新用户" + request.mobile().substring(request.mobile().length() - 4));
+            user.setIdentityType("SOCIAL");
+            user.setUserType("CANDIDATE");
+            user.setStatus("ACTIVE");
+            recruitmentMapper.insertUser(user);
+            isNewUser = true;
+        }
+        if (!"CANDIDATE".equals(user.getUserType())) {
+            throw new BusinessException(2002, "当前账号不是个人求职者账号");
+        }
+        Map<String, Object> data = buildTokenResponse(user);
+        data.put("isNewUser", isNewUser);
+        return data;
+    }
+
+    @Transactional
     public Map<String, Object> registerEnterprise(EnterpriseRegisterRequest request) {
         if (Boolean.FALSE.equals(request.agreeProtocol())) {
             throw new BusinessException(1001, "请先同意用户协议");
         }
+        commonService.validateSmsCode(request.contactMobile(), "REGISTER", request.smsCode());
         ensureMobileNotExists(request.contactMobile());
 
         UserEntity user = new UserEntity();
@@ -112,6 +143,29 @@ public class RecruitmentService {
         data.put("accountId", user.getUserId());
         data.put("authStatus", companyInfo.getAuthStatus());
         return data;
+    }
+
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        commonService.validateSmsCode(request.mobile(), "RESET_PWD", request.smsCode());
+        UserEntity user = getUserByMobile(request.mobile());
+        recruitmentMapper.updateUserPassword(user.getUserId(), passwordEncoder.encode(request.newPassword()));
+    }
+
+    public Map<String, Object> refreshAccessToken(RefreshTokenRequest request) {
+        if (!jwtUtil.validateRefreshToken(request.refreshToken())) {
+            throw new BusinessException(2001, "用户未登录或Token失效");
+        }
+        String username = jwtUtil.extractUsernameFromRefreshToken(request.refreshToken());
+        UserEntity user = getUserByMobile(username);
+        return Map.of(
+            "accessToken", buildTokenResponse(user).get("accessToken"),
+            "expiresIn", jwtUtil.getAccessExpirationTime() / 1000
+        );
+    }
+
+    public void logout() {
+        requireLoginUserId();
     }
 
     public Map<String, Object> getCurrentProfile() {
@@ -291,6 +345,7 @@ public class RecruitmentService {
 
     public Map<String, Object> getEnterpriseInfo() {
         CompanyInfoEntity companyInfo = requireEnterprise();
+        CompanyAuthEntity auth = recruitmentMapper.findLatestCompanyAuth(companyInfo.getEnterpriseId());
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("enterpriseId", companyInfo.getEnterpriseId());
         data.put("companyName", companyInfo.getCompanyName());
@@ -302,6 +357,15 @@ public class RecruitmentService {
         data.put("website", companyInfo.getWebsite());
         data.put("authStatus", companyInfo.getAuthStatus());
         data.put("rejectReason", companyInfo.getAuthRemark());
+        if (auth != null) {
+            data.put("creditCode", auth.getCreditCode());
+            data.put("legalPerson", auth.getLegalPerson());
+            data.put("licenseImage", auth.getLicenseImage());
+            data.put("licenseFileId", auth.getLicenseFileId());
+            data.put("logoFileId", auth.getLogoFileId());
+            data.put("logoFileUrl", auth.getLogoUrl());
+            data.put("submitTime", auth.getApplyTime());
+        }
         return data;
     }
 
@@ -315,6 +379,61 @@ public class RecruitmentService {
         companyInfo.setWebsite(request.website());
         companyInfo.setLogo(request.logo());
         recruitmentMapper.updateCompanyInfo(companyInfo);
+    }
+
+    @Transactional
+    public Map<String, Object> submitEnterpriseAuth(EnterpriseAuthSubmitRequest request) {
+        CompanyInfoEntity companyInfo = requireEnterprise();
+        FileRecordEntity licenseFile = commonService.requireFileById(request.licenseFileId());
+        FileRecordEntity logoFile = request.logoFileId() == null || request.logoFileId().isBlank()
+            ? null
+            : commonService.requireFileById(request.logoFileId());
+
+        companyInfo.setCompanyName(request.companyName());
+        companyInfo.setIndustry(request.industry());
+        companyInfo.setScale(request.scale());
+        companyInfo.setAddress(request.address());
+        companyInfo.setIntroduction(request.introduction());
+        companyInfo.setWebsite(request.website());
+        companyInfo.setLogo(logoFile == null ? companyInfo.getLogo() : logoFile.getFileUrl());
+        companyInfo.setAuthStatus("PENDING");
+        companyInfo.setAuthRemark(null);
+        recruitmentMapper.updateCompanyInfo(companyInfo);
+
+        CompanyAuthEntity auth = recruitmentMapper.findLatestCompanyAuth(companyInfo.getEnterpriseId());
+        if (auth == null) {
+            auth = new CompanyAuthEntity();
+            auth.setCompanyId(companyInfo.getEnterpriseId());
+        }
+        auth.setCreditCode(request.creditCode());
+        auth.setLegalPerson(request.legalPerson());
+        auth.setLicenseFileId(request.licenseFileId());
+        auth.setLicenseImage(licenseFile.getFileUrl());
+        auth.setLogoFileId(request.logoFileId());
+        auth.setLogoUrl(logoFile == null ? null : logoFile.getFileUrl());
+        auth.setApplyTime(LocalDateTime.now());
+        auth.setAuditStatus("PENDING");
+
+        if (auth.getAuthId() == null) {
+            recruitmentMapper.insertCompanyAuth(auth);
+        } else {
+            recruitmentMapper.updateCompanyAuth(auth);
+        }
+
+        return Map.of("authId", auth.getAuthId(), "authStatus", "PENDING");
+    }
+
+    public Map<String, Object> getEnterpriseAuthStatus() {
+        CompanyInfoEntity companyInfo = requireEnterprise();
+        CompanyAuthEntity auth = recruitmentMapper.findLatestCompanyAuth(companyInfo.getEnterpriseId());
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("authStatus", companyInfo.getAuthStatus() == null ? "UNAUTH" : companyInfo.getAuthStatus());
+        data.put("rejectReason", companyInfo.getAuthRemark());
+        if (auth != null) {
+            data.put("submitTime", auth.getApplyTime());
+            data.put("auditTime", auth.getAuditTime());
+        }
+        return data;
     }
 
     @Transactional

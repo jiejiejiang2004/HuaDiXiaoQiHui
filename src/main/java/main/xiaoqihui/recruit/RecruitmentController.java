@@ -31,6 +31,28 @@ public class RecruitmentController {
         return ApiResponse.success(recruitmentService.candidateLogin(request));
     }
 
+    @PostMapping("/user/login/sms")
+    public ApiResponse<?> loginCandidateBySms(@Valid @RequestBody SmsLoginRequest request) {
+        return ApiResponse.success(recruitmentService.candidateSmsLogin(request));
+    }
+
+    @PostMapping("/user/password/reset")
+    public ApiResponse<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        recruitmentService.resetPassword(request);
+        return ApiResponse.success();
+    }
+
+    @PostMapping("/user/token/refresh")
+    public ApiResponse<?> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
+        return ApiResponse.success(recruitmentService.refreshAccessToken(request));
+    }
+
+    @PostMapping("/user/logout")
+    public ApiResponse<?> logout() {
+        recruitmentService.logout();
+        return ApiResponse.success();
+    }
+
     @PostMapping("/enterprise/register")
     public ApiResponse<?> registerEnterprise(@Valid @RequestBody EnterpriseRegisterRequest request) {
         return ApiResponse.success(recruitmentService.registerEnterprise(request));
@@ -39,6 +61,12 @@ public class RecruitmentController {
     @PostMapping("/enterprise/login")
     public ApiResponse<?> loginEnterprise(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.success(recruitmentService.enterpriseLogin(request));
+    }
+
+    @PostMapping("/enterprise/password/reset")
+    public ApiResponse<?> resetEnterprisePassword(@Valid @RequestBody ResetPasswordRequest request) {
+        recruitmentService.resetPassword(request);
+        return ApiResponse.success();
     }
 
     @GetMapping("/user/profile")
@@ -135,6 +163,16 @@ public class RecruitmentController {
     @GetMapping("/enterprise/info")
     public ApiResponse<?> getEnterpriseInfo() {
         return ApiResponse.success(recruitmentService.getEnterpriseInfo());
+    }
+
+    @PostMapping("/enterprise/auth")
+    public ApiResponse<?> submitEnterpriseAuth(@Valid @RequestBody EnterpriseAuthSubmitRequest request) {
+        return ApiResponse.success(recruitmentService.submitEnterpriseAuth(request));
+    }
+
+    @GetMapping("/enterprise/auth/status")
+    public ApiResponse<?> getEnterpriseAuthStatus() {
+        return ApiResponse.success(recruitmentService.getEnterpriseAuthStatus());
     }
 
     @PutMapping("/enterprise/info")

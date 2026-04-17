@@ -11,6 +11,7 @@ import java.util.Map;
 
 record CandidateRegisterRequest(
     @NotBlank String mobile,
+    @NotBlank String smsCode,
     @NotBlank String password,
     @NotBlank String identity,
     @NotBlank String name,
@@ -26,10 +27,29 @@ record LoginRequest(
 
 record EnterpriseRegisterRequest(
     @NotBlank String contactMobile,
+    @NotBlank String smsCode,
     @NotBlank String password,
     @NotBlank String contactName,
     @NotBlank String companyName,
     @NotNull Boolean agreeProtocol
+) {
+}
+
+record SmsLoginRequest(
+    @NotBlank String mobile,
+    @NotBlank String smsCode
+) {
+}
+
+record ResetPasswordRequest(
+    @NotBlank String mobile,
+    @NotBlank String smsCode,
+    @NotBlank String newPassword
+) {
+}
+
+record RefreshTokenRequest(
+    @NotBlank String refreshToken
 ) {
 }
 
@@ -96,7 +116,22 @@ record EnterpriseInfoUpdateRequest(
     String address,
     String introduction,
     String website,
-    String logo
+    String logo,
+    List<String> welfare
+) {
+}
+
+record EnterpriseAuthSubmitRequest(
+    @NotBlank String companyName,
+    @NotBlank String creditCode,
+    @NotBlank String legalPerson,
+    @NotBlank String licenseFileId,
+    @NotBlank String industry,
+    @NotBlank String scale,
+    @NotBlank String address,
+    String introduction,
+    String logoFileId,
+    String website
 ) {
 }
 

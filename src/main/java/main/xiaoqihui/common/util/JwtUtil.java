@@ -46,6 +46,10 @@ public class JwtUtil {
         return extractClaim(token, Claims::getSubject);
     }
 
+    public String extractUsernameFromRefreshToken(String token) {
+        return extractClaim(token, Claims::getSubject, refreshSecretKey);
+    }
+
     public boolean validateAccessToken(String token) {
         return validateToken(token, accessSecretKey);
     }

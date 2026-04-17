@@ -3,6 +3,7 @@ package main.xiaoqihui.admin;
 import main.xiaoqihui.common.exception.BusinessException;
 import main.xiaoqihui.common.security.LoginUser;
 import main.xiaoqihui.common.util.JwtUtil;
+import main.xiaoqihui.recruit.CompanyAuthEntity;
 import main.xiaoqihui.common.util.SecurityUtils;
 import main.xiaoqihui.recruit.MessageEntity;
 import main.xiaoqihui.recruit.RecruitmentMapper;
@@ -130,6 +131,10 @@ public class AdminService {
         enterprise.setAuthStatus(afterStatus);
         enterprise.setAuthRemark(request.reason());
         adminMapper.updateEnterprise(enterprise);
+        CompanyAuthEntity auth = adminMapper.findLatestCompanyAuth(enterpriseId);
+        if (auth != null) {
+            adminMapper.updateCompanyAuthAudit(auth.getAuthId(), afterStatus, request.reason(), admin.getUserId());
+        }
         writeAuditLog("ENTERPRISE", enterpriseId, beforeStatus, afterStatus, request.result(), request.reason(), admin);
         createMessage(
             enterprise.getUserId(),

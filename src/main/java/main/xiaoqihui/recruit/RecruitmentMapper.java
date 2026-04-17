@@ -18,6 +18,9 @@ public interface RecruitmentMapper {
     @Select("select * from sys_user where user_id = #{userId} limit 1")
     UserEntity findUserById(Long userId);
 
+    @Update("update sys_user set password = #{password}, update_time = now() where user_id = #{userId}")
+    int updateUserPassword(@Param("userId") Long userId, @Param("password") String password);
+
     @Insert("""
         insert into sys_user (
             mobile, password, real_name, email, avatar, identity_type, user_type, status,
@@ -62,6 +65,39 @@ public interface RecruitmentMapper {
 
     @Select("select * from company_info where enterprise_id = #{enterpriseId} limit 1")
     CompanyInfoEntity findCompanyById(Long enterpriseId);
+
+    @Select("select * from company_auth where company_id = #{companyId} order by auth_id desc limit 1")
+    CompanyAuthEntity findLatestCompanyAuth(Long companyId);
+
+    @Insert("""
+        insert into company_auth (
+            company_id, credit_code, legal_person, license_file_id, license_image, logo_file_id, logo_url,
+            apply_time, audit_status
+        ) values (
+            #{companyId}, #{creditCode}, #{legalPerson}, #{licenseFileId}, #{licenseImage}, #{logoFileId}, #{logoUrl},
+            #{applyTime}, #{auditStatus}
+        )
+        """)
+    @Options(useGeneratedKeys = true, keyProperty = "authId")
+    int insertCompanyAuth(CompanyAuthEntity auth);
+
+    @Update("""
+        update company_auth
+        set credit_code = #{creditCode},
+            legal_person = #{legalPerson},
+            license_file_id = #{licenseFileId},
+            license_image = #{licenseImage},
+            logo_file_id = #{logoFileId},
+            logo_url = #{logoUrl},
+            apply_time = #{applyTime},
+            audit_status = #{auditStatus},
+            audit_remark = null,
+            audit_time = null,
+            auditor_id = null,
+            update_time = now()
+        where auth_id = #{authId}
+        """)
+    int updateCompanyAuth(CompanyAuthEntity auth);
 
     @Update("""
         <script>
