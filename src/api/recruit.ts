@@ -122,6 +122,22 @@ export function getEnterpriseAuthStatus() {
   return http.get("/enterprise/auth/status");
 }
 
+export function getCandidateStatistics() {
+  return http.get("/statistics/candidate");
+}
+
+export function getEnterpriseStatistics() {
+  return http.get("/statistics/enterprise");
+}
+
+export function getPlatformOverviewStatistics() {
+  return http.get("/statistics/platform/overview");
+}
+
+export function exportStatistics(payload: Record<string, unknown>) {
+  return http.post("/statistics/export", payload);
+}
+
 export function updateEnterpriseInfo(payload: Record<string, unknown>) {
   return http.put("/enterprise/info", payload);
 }

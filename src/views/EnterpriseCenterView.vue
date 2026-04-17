@@ -11,6 +11,50 @@
       </div>
     </div>
 
+    <el-row :gutter="16" class="section-gap">
+      <el-col :span="24">
+        <el-card shadow="hover">
+          <template #header>
+            <div class="card-title">
+              <span>招聘统计</span>
+              <el-button
+                text
+                type="primary"
+                @click="downloadEnterpriseStatistics"
+                >导出报表</el-button
+              >
+            </div>
+          </template>
+          <el-row :gutter="16">
+            <el-col :span="6">
+              <div class="stat-card">
+                <strong>{{ statistics.jobViewCount }}</strong>
+                <span>职位浏览量</span>
+              </div>
+            </el-col>
+            <el-col :span="6">
+              <div class="stat-card">
+                <strong>{{ statistics.resumeReceivedCount }}</strong>
+                <span>收到简历数</span>
+              </div>
+            </el-col>
+            <el-col :span="6">
+              <div class="stat-card">
+                <strong>{{ statistics.interviewCount }}</strong>
+                <span>面试邀约数</span>
+              </div>
+            </el-col>
+            <el-col :span="6">
+              <div class="stat-card">
+                <strong>{{ statistics.activeJobCount }}</strong>
+                <span>招聘中职位</span>
+              </div>
+            </el-col>
+          </el-row>
+        </el-card>
+      </el-col>
+    </el-row>
+
     <el-row :gutter="16">
       <el-col :span="8">
         <el-card shadow="hover">
@@ -306,9 +350,11 @@ import { ElMessage, UploadRequestOptions } from "element-plus";
 import { useRouter } from "vue-router";
 import {
   createEnterpriseJob,
+  exportStatistics,
   getEnterpriseAuthStatus,
   getEnterpriseInfo,
   getEnterpriseResumeDetail,
+  getEnterpriseStatistics,
   listEnterpriseApplies,
   listEnterpriseJobs,
   submitEnterpriseAuth,
@@ -396,6 +442,12 @@ const authPreview = reactive({
   licenseUrl: "",
   logoUrl: "",
 });
+const statistics = reactive({
+  jobViewCount: 0,
+  resumeReceivedCount: 0,
+  interviewCount: 0,
+  activeJobCount: 0,
+});
 const jobs = ref<EnterpriseJobRecord[]>([]);
 const applications = ref<EnterpriseApplyRecord[]>([]);
 const resumeVisible = ref(false);
@@ -441,6 +493,24 @@ async function saveEnterpriseInfo() {
   await updateEnterpriseInfo(enterpriseForm);
   ElMessage.success("企业信息已更新");
   await loadEnterpriseInfo();
+}
+
+async function loadStatistics() {
+  const data = await getEnterpriseStatistics();
+  statistics.jobViewCount = data.jobViewCount || 0;
+  statistics.resumeReceivedCount = data.resumeReceivedCount || 0;
+  statistics.interviewCount = data.interviewCount || 0;
+  statistics.activeJobCount = data.activeJobCount || 0;
+}
+
+async function downloadEnterpriseStatistics() {
+  const data = await exportStatistics({
+    type: "ENTERPRISE",
+    startDate: "2026-01-01",
+    endDate: "2026-12-31",
+    format: "csv",
+  });
+  window.open(resolveAssetUrl(data.downloadUrl), "_blank");
 }
 
 async function saveJob() {
@@ -522,7 +592,12 @@ function logout() {
 }
 
 onMounted(async () => {
-  await Promise.all([loadEnterpriseInfo(), loadJobs(), loadApplications()]);
+  await Promise.all([
+    loadEnterpriseInfo(),
+    loadJobs(),
+    loadApplications(),
+    loadStatistics(),
+  ]);
 });
 </script>
 
@@ -567,6 +642,26 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 96px;
+  padding: 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #eff6ff, #ecfeff);
+}
+
+.stat-card strong {
+  font-size: 28px;
+  color: #0f766e;
+}
+
+.stat-card span {
+  margin-top: 8px;
+  color: #6b7280;
 }
 
 .detail-box {

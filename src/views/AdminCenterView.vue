@@ -248,6 +248,62 @@
           <el-table-column prop="createTime" label="时间" width="180" />
         </el-table>
       </el-tab-pane>
+
+      <el-tab-pane label="统计分析" name="statistics">
+        <div class="toolbar">
+          <el-button type="primary" @click="loadPlatformStats"
+            >刷新统计</el-button
+          >
+          <el-button @click="downloadPlatformStatistics">导出报表</el-button>
+        </div>
+        <el-row :gutter="16">
+          <el-col :span="6">
+            <div class="stat-card">
+              <strong>{{ platformStats.candidateCount }}</strong>
+              <span>个人用户数</span>
+            </div>
+          </el-col>
+          <el-col :span="6">
+            <div class="stat-card">
+              <strong>{{ platformStats.enterpriseCount }}</strong>
+              <span>企业用户数</span>
+            </div>
+          </el-col>
+          <el-col :span="6">
+            <div class="stat-card">
+              <strong>{{ platformStats.jobCount }}</strong>
+              <span>职位总数</span>
+            </div>
+          </el-col>
+          <el-col :span="6">
+            <div class="stat-card">
+              <strong>{{ platformStats.applyCount }}</strong>
+              <span>投递总数</span>
+            </div>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16" class="section-gap">
+          <el-col :span="12">
+            <el-card shadow="never">
+              <template #header>区域分布</template>
+              <el-table :data="platformStats.employmentByArea || []" stripe>
+                <el-table-column prop="area" label="区域" />
+                <el-table-column prop="count" label="人数" width="120" />
+              </el-table>
+            </el-card>
+          </el-col>
+          <el-col :span="12">
+            <el-card shadow="never">
+              <template #header>行业分布</template>
+              <el-table :data="platformStats.industryDistribution || []" stripe>
+                <el-table-column prop="industry" label="行业" />
+                <el-table-column prop="jobCount" label="职位数" width="100" />
+                <el-table-column prop="applyCount" label="投递数" width="100" />
+              </el-table>
+            </el-card>
+          </el-col>
+        </el-row>
+      </el-tab-pane>
     </el-tabs>
 
     <el-dialog
@@ -291,8 +347,10 @@ import {
   auditNotice,
   createCategoryAdmin,
   createSystemNotice,
+  exportStatistics,
   deleteCategoryAdmin,
   deleteSystemNotice,
+  getPlatformOverviewStatistics,
   getCandidateDetail,
   listAuditJobs,
   listAuditLogs,
@@ -303,6 +361,7 @@ import {
   updateCandidateStatus,
   updateEnterpriseStatusAdmin,
 } from "@/api/recruit";
+import { resolveAssetUrl } from "@/api/http";
 import { clearAuth } from "@/utils/auth";
 
 interface CandidateRecord {
@@ -362,6 +421,15 @@ const categories = ref<CategoryRecord[]>([]);
 const auditLogs = ref<AuditLogRecord[]>([]);
 const candidateDetailVisible = ref(false);
 const candidateDetail = ref<Record<string, unknown> | null>(null);
+const platformStats = reactive({
+  candidateCount: 0,
+  enterpriseCount: 0,
+  jobCount: 0,
+  applyCount: 0,
+  interviewCount: 0,
+  employmentByArea: [] as Array<Record<string, unknown>>,
+  industryDistribution: [] as Array<Record<string, unknown>>,
+});
 
 const candidateQuery = reactive({
   keyword: "",
@@ -515,6 +583,27 @@ async function loadAuditLogList() {
   auditLogs.value = data.list || [];
 }
 
+async function loadPlatformStats() {
+  const data = await getPlatformOverviewStatistics();
+  platformStats.candidateCount = data.candidateCount || 0;
+  platformStats.enterpriseCount = data.enterpriseCount || 0;
+  platformStats.jobCount = data.jobCount || 0;
+  platformStats.applyCount = data.applyCount || 0;
+  platformStats.interviewCount = data.interviewCount || 0;
+  platformStats.employmentByArea = data.employmentByArea || [];
+  platformStats.industryDistribution = data.industryDistribution || [];
+}
+
+async function downloadPlatformStatistics() {
+  const data = await exportStatistics({
+    type: "PLATFORM",
+    startDate: "2026-01-01",
+    endDate: "2026-12-31",
+    format: "csv",
+  });
+  window.open(resolveAssetUrl(data.downloadUrl), "_blank");
+}
+
 function logout() {
   clearAuth();
   router.push("/login");
@@ -529,6 +618,7 @@ watch(
     if (tab === "notice") await loadNotices();
     if (tab === "category") await loadCategories();
     if (tab === "audit-log") await loadAuditLogList();
+    if (tab === "statistics") await loadPlatformStats();
   },
   { immediate: false }
 );
@@ -542,6 +632,7 @@ onMounted(async () => {
       loadNotices(),
       loadCategories(),
       loadAuditLogList(),
+      loadPlatformStats(),
     ]);
   } catch (error) {
     ElMessageBox.alert("请确认管理员账号和后端服务已正常启动。", "初始化失败");
@@ -592,5 +683,29 @@ onMounted(async () => {
 
 .toolbar > * {
   max-width: 240px;
+}
+
+.section-gap {
+  margin-top: 16px;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 96px;
+  padding: 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #eff6ff, #f5f3ff);
+}
+
+.stat-card strong {
+  font-size: 28px;
+  color: #7c3aed;
+}
+
+.stat-card span {
+  margin-top: 8px;
+  color: #6b7280;
 }
 </style>

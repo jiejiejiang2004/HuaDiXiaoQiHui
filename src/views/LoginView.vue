@@ -31,7 +31,10 @@
             <el-form-item v-else label="短信验证码">
               <div class="sms-row">
                 <el-input v-model="candidateForm.smsCode" />
-                <el-button @click="sendCode(candidateForm.mobile, 'LOGIN')"
+                <el-button
+                  @click="
+                    runSafely(() => sendCode(candidateForm.mobile, 'LOGIN'))
+                  "
                   >获取验证码</el-button
                 >
               </div>
@@ -42,7 +45,10 @@
                   v-model="candidateForm.registerSmsCode"
                   placeholder="注册时填写"
                 />
-                <el-button @click="sendCode(candidateForm.mobile, 'REGISTER')"
+                <el-button
+                  @click="
+                    runSafely(() => sendCode(candidateForm.mobile, 'REGISTER'))
+                  "
                   >发送注册码</el-button
                 >
               </div>
@@ -51,12 +57,13 @@
               <el-button
                 type="primary"
                 :loading="candidateLoading"
-                @click="handleCandidateSubmit"
-                >{{
-                  candidateMode === "password" ? "登录" : "验证码登录"
-                }}</el-button
+                @click="runSafely(handleCandidateSubmit)"
               >
-              <el-button @click="handleCandidateRegister">快速注册</el-button>
+                {{ candidateMode === "password" ? "登录" : "验证码登录" }}
+              </el-button>
+              <el-button @click="runSafely(handleCandidateRegister)"
+                >快速注册</el-button
+              >
               <el-button text @click="openResetDialog('candidate')"
                 >找回密码</el-button
               >
@@ -111,10 +118,12 @@
               <el-button
                 type="primary"
                 :loading="enterpriseLoading"
-                @click="handleEnterpriseLogin"
+                @click="runSafely(handleEnterpriseLogin)"
                 >密码登录</el-button
               >
-              <el-button @click="handleEnterpriseRegister">快速注册</el-button>
+              <el-button @click="runSafely(handleEnterpriseRegister)"
+                >快速注册</el-button
+              >
               <el-button text @click="openResetDialog('enterprise')"
                 >找回密码</el-button
               >
@@ -138,7 +147,7 @@
               <el-button
                 type="primary"
                 :loading="adminLoading"
-                @click="handleAdminLogin"
+                @click="runSafely(handleAdminLogin)"
                 >登录后台</el-button
               >
             </div>
@@ -163,7 +172,8 @@
         <el-form-item label="短信验证码">
           <div class="sms-row">
             <el-input v-model="resetForm.smsCode" />
-            <el-button @click="sendCode(resetForm.mobile, 'RESET_PWD')"
+            <el-button
+              @click="runSafely(() => sendCode(resetForm.mobile, 'RESET_PWD'))"
               >获取验证码</el-button
             >
           </div>
@@ -178,7 +188,9 @@
       </el-form>
       <template #footer>
         <el-button @click="resetDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitResetPassword">完成</el-button>
+        <el-button type="primary" @click="runSafely(submitResetPassword)"
+          >完成</el-button
+        >
       </template>
     </el-dialog>
   </div>
@@ -273,6 +285,14 @@ async function sendCode(mobile: string, scene: string) {
   });
   lastDebugCode.value = data.debugCode || "";
   ElMessage.success(`验证码已发送，有效期 ${data.expireSeconds} 秒`);
+}
+
+async function runSafely(task: () => Promise<void>) {
+  try {
+    await task();
+  } catch {
+    // 拦截器已统一提示，这里阻止未处理 Promise 继续冒泡到 dev overlay
+  }
 }
 
 async function handleCandidateLogin() {
@@ -392,13 +412,17 @@ function openResetDialog(target: "candidate" | "enterprise") {
 }
 
 async function submitResetPassword() {
-  if (resetTarget.value === "candidate") {
-    await resetPassword(resetForm);
-  } else {
-    await resetEnterprisePassword(resetForm);
+  try {
+    if (resetTarget.value === "candidate") {
+      await resetPassword(resetForm);
+    } else {
+      await resetEnterprisePassword(resetForm);
+    }
+    ElMessage.success("密码重置成功，请重新登录");
+    resetDialogVisible.value = false;
+  } catch {
+    // 由响应拦截器处理提示
   }
-  ElMessage.success("密码重置成功，请重新登录");
-  resetDialogVisible.value = false;
 }
 </script>
 

@@ -12,6 +12,53 @@
     </div>
 
     <el-row :gutter="16">
+      <el-col :span="24">
+        <el-card shadow="hover">
+          <template #header>
+            <div class="card-title">
+              <span>个人统计</span>
+              <el-button text type="primary" @click="downloadMyStatistics"
+                >导出统计</el-button
+              >
+            </div>
+          </template>
+          <el-row :gutter="16">
+            <el-col :span="6">
+              <div class="stat-card">
+                <strong>{{ statistics.applyCount }}</strong>
+                <span>累计投递</span>
+              </div>
+            </el-col>
+            <el-col :span="6">
+              <div class="stat-card">
+                <strong>{{ statistics.interviewCount }}</strong>
+                <span>面试次数</span>
+              </div>
+            </el-col>
+            <el-col :span="6">
+              <div class="stat-card">
+                <strong>{{ statistics.viewedCount }}</strong>
+                <span>被查看次数</span>
+              </div>
+            </el-col>
+            <el-col :span="6">
+              <div class="stat-card">
+                <strong>{{ statistics.favoriteCount }}</strong>
+                <span>收藏职位</span>
+              </div>
+            </el-col>
+          </el-row>
+          <el-table
+            :data="statistics.applyTrend || []"
+            stripe
+            class="trend-table"
+          >
+            <el-table-column prop="day" label="日期" width="160" />
+            <el-table-column prop="count" label="投递数" />
+          </el-table>
+        </el-card>
+      </el-col>
+
       <el-col :span="8">
         <el-card shadow="hover">
           <template #header>个人资料</template>
@@ -148,6 +195,8 @@ import { ElMessage } from "element-plus";
 import { useRouter } from "vue-router";
 import {
   createResume,
+  exportStatistics,
+  getCandidateStatistics,
   getProfile,
   listMessages,
   listMyApplies,
@@ -156,6 +205,7 @@ import {
   updateProfile,
   updateResume,
 } from "@/api/recruit";
+import { resolveAssetUrl } from "@/api/http";
 import { clearAuth } from "@/utils/auth";
 
 interface CandidateProfile {
@@ -205,6 +255,13 @@ const profileForm = reactive({
 const resumeId = ref<number | null>(null);
 const applyList = ref<ApplyRecord[]>([]);
 const messages = ref<MessageRecord[]>([]);
+const statistics = reactive({
+  applyCount: 0,
+  interviewCount: 0,
+  viewedCount: 0,
+  favoriteCount: 0,
+  applyTrend: [] as Array<{ day: string; count: number }>,
+});
 const resumeForm = reactive<ResumeForm>({
   title: "默认简历",
   basicInfo: {
@@ -286,6 +343,25 @@ async function loadMessages() {
   messages.value = data.list || [];
 }
 
+async function loadStatistics() {
+  const data = await getCandidateStatistics();
+  statistics.applyCount = data.applyCount || 0;
+  statistics.interviewCount = data.interviewCount || 0;
+  statistics.viewedCount = data.viewedCount || 0;
+  statistics.favoriteCount = data.favoriteCount || 0;
+  statistics.applyTrend = data.applyTrend || [];
+}
+
+async function downloadMyStatistics() {
+  const data = await exportStatistics({
+    type: "CANDIDATE",
+    startDate: "2026-01-01",
+    endDate: "2026-12-31",
+    format: "csv",
+  });
+  window.open(resolveAssetUrl(data.downloadUrl), "_blank");
+}
+
 async function readAllMessages() {
   await markMessagesRead();
   ElMessage.success("消息已全部标记已读");
@@ -303,6 +379,7 @@ onMounted(async () => {
     loadResume(),
     loadApplies(),
     loadMessages(),
+    loadStatistics(),
   ]);
 });
 </script>
@@ -349,5 +426,29 @@ onMounted(async () => {
 .inline-input {
   margin-right: 12px;
   width: calc(33.3% - 8px);
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 96px;
+  padding: 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #eff6ff, #f0fdf4);
+}
+
+.stat-card strong {
+  font-size: 28px;
+  color: #1d4ed8;
+}
+
+.stat-card span {
+  margin-top: 8px;
+  color: #6b7280;
+}
+
+.trend-table {
+  margin-top: 16px;
 }
 </style>
