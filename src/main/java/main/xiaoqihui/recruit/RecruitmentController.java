@@ -2,6 +2,7 @@ package main.xiaoqihui.recruit;
 
 import jakarta.validation.Valid;
 import main.xiaoqihui.common.api.ApiResponse;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -125,9 +126,44 @@ public class RecruitmentController {
         return ApiResponse.success(recruitmentService.getResumeDetail(resumeId));
     }
 
+    @DeleteMapping("/resume/{resumeId}")
+    public ApiResponse<?> deleteResume(@PathVariable Long resumeId) {
+        recruitmentService.deleteResume(resumeId);
+        return ApiResponse.success();
+    }
+
+    @PutMapping("/resume/{resumeId}/default")
+    public ApiResponse<?> setDefaultResume(@PathVariable Long resumeId) {
+        recruitmentService.setDefaultResume(resumeId);
+        return ApiResponse.success();
+    }
+
+    @PutMapping("/resume/{resumeId}/privacy")
+    public ApiResponse<?> updateResumePrivacy(
+        @PathVariable Long resumeId,
+        @Valid @RequestBody ResumePrivacyUpdateRequest request
+    ) {
+        recruitmentService.updateResumePrivacy(resumeId, request);
+        return ApiResponse.success();
+    }
+
     @GetMapping("/resume/{resumeId}/export/pdf")
     public ApiResponse<?> exportResumePdf(@PathVariable Long resumeId) {
         return ApiResponse.success(recruitmentService.exportResumePdf(resumeId));
+    }
+
+    @PostMapping("/resume/{resumeId}/attachment")
+    public ApiResponse<?> addResumeAttachment(
+        @PathVariable Long resumeId,
+        @Valid @RequestBody ResumeAttachmentSaveRequest request
+    ) {
+        return ApiResponse.success(recruitmentService.addResumeAttachment(resumeId, request));
+    }
+
+    @DeleteMapping("/resume/{resumeId}/attachment/{attachmentId}")
+    public ApiResponse<?> deleteResumeAttachment(@PathVariable Long resumeId, @PathVariable Long attachmentId) {
+        recruitmentService.deleteResumeAttachment(resumeId, attachmentId);
+        return ApiResponse.success();
     }
 
     @GetMapping("/resume/my")
@@ -138,6 +174,31 @@ public class RecruitmentController {
     @PostMapping("/apply")
     public ApiResponse<?> applyJob(@Valid @RequestBody ApplyRequest request) {
         return ApiResponse.success(recruitmentService.applyJob(request));
+    }
+
+    @PostMapping("/apply/batch")
+    public ApiResponse<?> batchApply(@Valid @RequestBody BatchApplyRequest request) {
+        return ApiResponse.success(recruitmentService.batchApplyJobs(request));
+    }
+
+    @PostMapping("/jobs/{jobId}/favorite")
+    public ApiResponse<?> collectJob(@PathVariable Long jobId) {
+        recruitmentService.collectJob(jobId);
+        return ApiResponse.success();
+    }
+
+    @DeleteMapping("/jobs/{jobId}/favorite")
+    public ApiResponse<?> uncollectJob(@PathVariable Long jobId) {
+        recruitmentService.uncollectJob(jobId);
+        return ApiResponse.success();
+    }
+
+    @GetMapping("/jobs/favorites")
+    public ApiResponse<?> listCollectedJobs(
+        @RequestParam(defaultValue = "1") int pageNum,
+        @RequestParam(defaultValue = "10") int pageSize
+    ) {
+        return ApiResponse.success(recruitmentService.listCollectedJobs(pageNum, pageSize));
     }
 
     @GetMapping("/apply/my")
@@ -159,10 +220,26 @@ public class RecruitmentController {
         return ApiResponse.success(recruitmentService.listMessages(type, readStatus, pageNum, pageSize));
     }
 
+    @GetMapping("/messages/{messageId}")
+    public ApiResponse<?> getMessageDetail(@PathVariable Long messageId) {
+        return ApiResponse.success(recruitmentService.getMessageDetail(messageId));
+    }
+
     @PutMapping("/messages/read")
     public ApiResponse<?> markMessagesRead(@RequestBody(required = false) ReadMessageRequest request) {
         recruitmentService.markMessagesRead(request);
         return ApiResponse.success();
+    }
+
+    @DeleteMapping("/messages")
+    public ApiResponse<?> deleteMessages(@Valid @RequestBody DeleteMessageRequest request) {
+        recruitmentService.deleteMessages(request);
+        return ApiResponse.success();
+    }
+
+    @GetMapping("/messages/unread/count")
+    public ApiResponse<?> countUnreadMessages() {
+        return ApiResponse.success(recruitmentService.countUnreadMessages());
     }
 
     @GetMapping("/enterprise/info")
@@ -197,6 +274,24 @@ public class RecruitmentController {
         return ApiResponse.success();
     }
 
+    @PutMapping("/enterprise/jobs/{jobId}/offline")
+    public ApiResponse<?> offlineEnterpriseJob(@PathVariable Long jobId) {
+        recruitmentService.offlineEnterpriseJob(jobId);
+        return ApiResponse.success();
+    }
+
+    @PutMapping("/enterprise/jobs/{jobId}/refresh")
+    public ApiResponse<?> refreshEnterpriseJob(@PathVariable Long jobId) {
+        recruitmentService.refreshEnterpriseJob(jobId);
+        return ApiResponse.success();
+    }
+
+    @DeleteMapping("/enterprise/jobs/{jobId}")
+    public ApiResponse<?> deleteEnterpriseJob(@PathVariable Long jobId) {
+        recruitmentService.deleteEnterpriseJob(jobId);
+        return ApiResponse.success();
+    }
+
     @GetMapping("/enterprise/jobs")
     public ApiResponse<?> listEnterpriseJobs(
         @RequestParam(required = false) String status,
@@ -205,6 +300,16 @@ public class RecruitmentController {
         @RequestParam(defaultValue = "10") int pageSize
     ) {
         return ApiResponse.success(recruitmentService.listEnterpriseJobs(status, keyword, pageNum, pageSize));
+    }
+
+    @GetMapping("/enterprise/jobs/{jobId}/preview")
+    public ApiResponse<?> previewEnterpriseJob(@PathVariable Long jobId) {
+        return ApiResponse.success(recruitmentService.previewEnterpriseJob(jobId));
+    }
+
+    @GetMapping("/enterprise/jobs/{jobId}/share")
+    public ApiResponse<?> shareEnterpriseJob(@PathVariable Long jobId) {
+        return ApiResponse.success(recruitmentService.shareEnterpriseJob(jobId));
     }
 
     @GetMapping("/enterprise/applies")
@@ -224,6 +329,51 @@ public class RecruitmentController {
     ) {
         recruitmentService.updateEnterpriseApplicationStatus(applyId, request);
         return ApiResponse.success();
+    }
+
+    @PutMapping("/enterprise/applies/status/batch")
+    public ApiResponse<?> batchUpdateEnterpriseApplyStatus(@RequestBody ApplyStatusBatchRequest request) {
+        recruitmentService.batchUpdateEnterpriseApplicationStatus(request.applyIds(), request.status());
+        return ApiResponse.success();
+    }
+
+    @PostMapping("/enterprise/interviews")
+    public ApiResponse<?> createInterview(@Valid @RequestBody InterviewCreateRequest request) {
+        return ApiResponse.success(recruitmentService.createInterview(request));
+    }
+
+    @GetMapping("/enterprise/interviews")
+    public ApiResponse<?> listEnterpriseInterviews(
+        @RequestParam(defaultValue = "1") int pageNum,
+        @RequestParam(defaultValue = "10") int pageSize
+    ) {
+        return ApiResponse.success(recruitmentService.listEnterpriseInterviews(pageNum, pageSize));
+    }
+
+    @GetMapping("/enterprise/talents/search")
+    public ApiResponse<?> searchEnterpriseTalents(
+        @RequestParam(required = false) String keyword,
+        @RequestParam(required = false) String major,
+        @RequestParam(required = false) String education,
+        @RequestParam(required = false) String experience,
+        @RequestParam(required = false) String skillKeywords,
+        @RequestParam(required = false) String expectCity,
+        @RequestParam(defaultValue = "1") int pageNum,
+        @RequestParam(defaultValue = "10") int pageSize
+    ) {
+        return ApiResponse.success(
+            recruitmentService.searchEnterpriseTalents(keyword, major, education, experience, skillKeywords, expectCity, pageNum, pageSize)
+        );
+    }
+
+    @GetMapping("/enterprise/talents/{resumeId}")
+    public ApiResponse<?> getEnterpriseTalentDetail(@PathVariable Long resumeId) {
+        return ApiResponse.success(recruitmentService.getEnterpriseTalentDetail(resumeId));
+    }
+
+    @PostMapping("/enterprise/talents/contact")
+    public ApiResponse<?> contactEnterpriseTalent(@Valid @RequestBody TalentContactRequest request) {
+        return ApiResponse.success(recruitmentService.contactEnterpriseTalent(request));
     }
 
     @GetMapping("/enterprise/resumes/{resumeId}")

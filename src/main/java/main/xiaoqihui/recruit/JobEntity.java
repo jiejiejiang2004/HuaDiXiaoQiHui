@@ -23,6 +23,7 @@ public class JobEntity {
     private LocalDateTime refreshTime;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
+    private String auditRemark;
     private String companyName;
     private String companyLogo;
     private String companyIndustry;
@@ -67,6 +68,8 @@ public class JobEntity {
     public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
     public LocalDateTime getUpdateTime() { return updateTime; }
     public void setUpdateTime(LocalDateTime updateTime) { this.updateTime = updateTime; }
+    public String getAuditRemark() { return auditRemark; }
+    public void setAuditRemark(String auditRemark) { this.auditRemark = auditRemark; }
     public String getCompanyName() { return companyName; }
     public void setCompanyName(String companyName) { this.companyName = companyName; }
     public String getCompanyLogo() { return companyLogo; }

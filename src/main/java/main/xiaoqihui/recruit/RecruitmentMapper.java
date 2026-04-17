@@ -4,9 +4,11 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Mapper
@@ -155,6 +157,86 @@ public interface RecruitmentMapper {
     @Select("select * from resume where resume_id = #{resumeId} limit 1")
     ResumeEntity findResumeById(Long resumeId);
 
+    @Select("""
+        <script>
+        select *
+        from resume
+        where privacy in ('PUBLIC', 'ENTERPRISE_ONLY')
+        <if test="keyword != null and keyword != ''">
+            and (
+                basic_info like concat('%', #{keyword}, '%')
+                or self_evaluation like concat('%', #{keyword}, '%')
+                or skill_list like concat('%', #{keyword}, '%')
+            )
+        </if>
+        <if test="major != null and major != ''">
+            and education_list like concat('%', #{major}, '%')
+        </if>
+        <if test="education != null and education != ''">
+            and education_list like concat('%', #{education}, '%')
+        </if>
+        <if test="experience != null and experience != ''">
+            and work_list like concat('%', #{experience}, '%')
+        </if>
+        <if test="skillKeywords != null and skillKeywords != ''">
+            and skill_list like concat('%', #{skillKeywords}, '%')
+        </if>
+        <if test="expectCity != null and expectCity != ''">
+            and job_intention like concat('%', #{expectCity}, '%')
+        </if>
+        order by update_time desc
+        limit #{limit} offset #{offset}
+        </script>
+        """)
+    List<ResumeEntity> searchTalentResumes(
+        @Param("keyword") String keyword,
+        @Param("major") String major,
+        @Param("education") String education,
+        @Param("experience") String experience,
+        @Param("skillKeywords") String skillKeywords,
+        @Param("expectCity") String expectCity,
+        @Param("offset") int offset,
+        @Param("limit") int limit
+    );
+
+    @Select("""
+        <script>
+        select count(1)
+        from resume
+        where privacy in ('PUBLIC', 'ENTERPRISE_ONLY')
+        <if test="keyword != null and keyword != ''">
+            and (
+                basic_info like concat('%', #{keyword}, '%')
+                or self_evaluation like concat('%', #{keyword}, '%')
+                or skill_list like concat('%', #{keyword}, '%')
+            )
+        </if>
+        <if test="major != null and major != ''">
+            and education_list like concat('%', #{major}, '%')
+        </if>
+        <if test="education != null and education != ''">
+            and education_list like concat('%', #{education}, '%')
+        </if>
+        <if test="experience != null and experience != ''">
+            and work_list like concat('%', #{experience}, '%')
+        </if>
+        <if test="skillKeywords != null and skillKeywords != ''">
+            and skill_list like concat('%', #{skillKeywords}, '%')
+        </if>
+        <if test="expectCity != null and expectCity != ''">
+            and job_intention like concat('%', #{expectCity}, '%')
+        </if>
+        </script>
+        """)
+    long countTalentResumes(
+        @Param("keyword") String keyword,
+        @Param("major") String major,
+        @Param("education") String education,
+        @Param("experience") String experience,
+        @Param("skillKeywords") String skillKeywords,
+        @Param("expectCity") String expectCity
+    );
+
     @Select("select * from resume where user_id = #{userId} order by is_default desc, update_time desc")
     List<ResumeEntity> findResumesByUserId(Long userId);
 
@@ -163,6 +245,28 @@ public interface RecruitmentMapper {
 
     @Update("update resume set is_default = 1 where resume_id = #{resumeId} and user_id = #{userId}")
     int setDefaultResume(@Param("userId") Long userId, @Param("resumeId") Long resumeId);
+
+    @Update("update resume set privacy = #{privacy}, update_time = now() where resume_id = #{resumeId} and user_id = #{userId}")
+    int updateResumePrivacy(@Param("userId") Long userId, @Param("resumeId") Long resumeId, @Param("privacy") String privacy);
+
+    @Delete("delete from resume where resume_id = #{resumeId} and user_id = #{userId}")
+    int deleteResume(@Param("userId") Long userId, @Param("resumeId") Long resumeId);
+
+    @Insert("""
+        insert into resume_attachment (resume_id, file_id, file_name, file_url, uploader_id)
+        values (#{resumeId}, #{fileId}, #{fileName}, #{fileUrl}, #{uploaderId})
+        """)
+    @Options(useGeneratedKeys = true, keyProperty = "attachmentId")
+    int insertResumeAttachment(ResumeAttachmentEntity attachment);
+
+    @Select("select * from resume_attachment where resume_id = #{resumeId} order by attachment_id desc")
+    List<ResumeAttachmentEntity> listResumeAttachments(Long resumeId);
+
+    @Select("select * from resume_attachment where attachment_id = #{attachmentId} limit 1")
+    ResumeAttachmentEntity findResumeAttachmentById(Long attachmentId);
+
+    @Delete("delete from resume_attachment where attachment_id = #{attachmentId} and resume_id = #{resumeId}")
+    int deleteResumeAttachment(@Param("resumeId") Long resumeId, @Param("attachmentId") Long attachmentId);
 
     @Insert("""
         insert into job_position (
@@ -200,6 +304,30 @@ public interface RecruitmentMapper {
         where job_id = #{jobId} and enterprise_id = #{enterpriseId}
         """)
     int updateJob(JobEntity job);
+
+    @Update("update job_position set status = 'OFFLINE', update_time = now() where job_id = #{jobId} and enterprise_id = #{enterpriseId}")
+    int offlineJob(@Param("enterpriseId") Long enterpriseId, @Param("jobId") Long jobId);
+
+    @Update("update job_position set refresh_time = now(), update_time = now() where job_id = #{jobId} and enterprise_id = #{enterpriseId}")
+    int refreshJob(@Param("enterpriseId") Long enterpriseId, @Param("jobId") Long jobId);
+
+    @Delete("delete from job_position where job_id = #{jobId} and enterprise_id = #{enterpriseId}")
+    int deleteJob(@Param("enterpriseId") Long enterpriseId, @Param("jobId") Long jobId);
+
+    @Insert("""
+        insert into enterprise_job_refresh_log (enterprise_id, job_id, refresh_date)
+        values (#{enterpriseId}, #{jobId}, #{refreshDate})
+        """)
+    int insertJobRefreshLog(@Param("enterpriseId") Long enterpriseId, @Param("jobId") Long jobId, @Param("refreshDate") LocalDate refreshDate);
+
+    @Select("""
+        select count(1)
+        from enterprise_job_refresh_log
+        where job_id = #{jobId}
+          and enterprise_id = #{enterpriseId}
+          and refresh_date = #{refreshDate}
+        """)
+    int countJobRefreshTimes(@Param("enterpriseId") Long enterpriseId, @Param("jobId") Long jobId, @Param("refreshDate") LocalDate refreshDate);
 
     @Select("""
         select jp.*, ci.company_name, ci.logo as company_logo, ci.industry as company_industry
@@ -315,6 +443,29 @@ public interface RecruitmentMapper {
     @Select("select count(1) from job_application where job_id = #{jobId} and user_id = #{userId}")
     long countUserApplication(@Param("jobId") Long jobId, @Param("userId") Long userId);
 
+    @Select("select count(1) from job_collection where job_id = #{jobId} and user_id = #{userId}")
+    long countUserCollectedJob(@Param("jobId") Long jobId, @Param("userId") Long userId);
+
+    @Insert("insert into job_collection (user_id, job_id) values (#{userId}, #{jobId})")
+    int insertJobCollection(@Param("userId") Long userId, @Param("jobId") Long jobId);
+
+    @Delete("delete from job_collection where user_id = #{userId} and job_id = #{jobId}")
+    int deleteJobCollection(@Param("userId") Long userId, @Param("jobId") Long jobId);
+
+    @Select("""
+        select jp.*, ci.company_name, ci.logo as company_logo, ci.industry as company_industry
+        from job_collection jc
+        join job_position jp on jp.job_id = jc.job_id
+        join company_info ci on ci.enterprise_id = jp.enterprise_id
+        where jc.user_id = #{userId}
+        order by jc.collection_id desc
+        limit #{limit} offset #{offset}
+        """)
+    List<JobEntity> listCollectedJobs(@Param("userId") Long userId, @Param("offset") int offset, @Param("limit") int limit);
+
+    @Select("select count(1) from job_collection where user_id = #{userId}")
+    long countCollectedJobs(Long userId);
+
     @Select("select count(1) from job_application where job_id = #{jobId}")
     int countApplicationsByJob(Long jobId);
 
@@ -408,11 +559,59 @@ public interface RecruitmentMapper {
         @Param("jobId") Long jobId
     );
 
-    @Select("select * from job_application where apply_id = #{applyId} limit 1")
+    @Select("""
+        select ja.*, jp.job_name, su.real_name as candidate_name, r.title as resume_title
+        from job_application ja
+        join job_position jp on jp.job_id = ja.job_id
+        join sys_user su on su.user_id = ja.user_id
+        join resume r on r.resume_id = ja.resume_id
+        where ja.apply_id = #{applyId}
+        limit 1
+        """)
     ApplicationEntity findApplicationById(Long applyId);
 
     @Update("update job_application set status = #{status}, update_time = now() where apply_id = #{applyId}")
     int updateApplicationStatus(@Param("applyId") Long applyId, @Param("status") String status);
+
+    @Update("""
+        <script>
+        update job_application
+        set status = #{status}, update_time = now()
+        where enterprise_id = #{enterpriseId}
+        and apply_id in
+        <foreach collection="applyIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        </script>
+        """)
+    int batchUpdateApplicationStatus(@Param("enterpriseId") Long enterpriseId, @Param("applyIds") List<Long> applyIds, @Param("status") String status);
+
+    @Insert("""
+        insert into enterprise_interview (
+            apply_id, enterprise_id, user_id, resume_id, job_id, interview_time,
+            interview_type, interview_place, interview_link, contact_name, contact_mobile, remark, status
+        ) values (
+            #{applyId}, #{enterpriseId}, #{userId}, #{resumeId}, #{jobId}, #{interviewTime},
+            #{interviewType}, #{interviewPlace}, #{interviewLink}, #{contactName}, #{contactMobile}, #{remark}, #{status}
+        )
+        """)
+    @Options(useGeneratedKeys = true, keyProperty = "interviewId")
+    int insertInterview(InterviewEntity interview);
+
+    @Select("""
+        select ei.*, su.real_name as candidate_name, jp.job_name, r.title as resume_title
+        from enterprise_interview ei
+        join sys_user su on su.user_id = ei.user_id
+        join job_position jp on jp.job_id = ei.job_id
+        join resume r on r.resume_id = ei.resume_id
+        where ei.enterprise_id = #{enterpriseId}
+        order by ei.interview_time desc
+        limit #{limit} offset #{offset}
+        """)
+    List<InterviewEntity> listEnterpriseInterviews(@Param("enterpriseId") Long enterpriseId, @Param("offset") int offset, @Param("limit") int limit);
+
+    @Select("select count(1) from enterprise_interview where enterprise_id = #{enterpriseId}")
+    long countEnterpriseInterviews(Long enterpriseId);
 
     @Insert("""
         insert into job_message (user_id, type, title, content, biz_id, read_status)
@@ -465,6 +664,12 @@ public interface RecruitmentMapper {
     @Select("select count(1) from job_message where user_id = #{userId} and read_status = 'UNREAD'")
     int countUnreadMessages(Long userId);
 
+    @Select("select count(1) from job_message where user_id = #{userId} and read_status = 'UNREAD' and type = #{type}")
+    int countUnreadMessagesByType(@Param("userId") Long userId, @Param("type") String type);
+
+    @Select("select * from job_message where message_id = #{messageId} and user_id = #{userId} limit 1")
+    MessageEntity findMessageById(@Param("userId") Long userId, @Param("messageId") Long messageId);
+
     @Update("""
         <script>
         update job_message
@@ -480,4 +685,16 @@ public interface RecruitmentMapper {
         </script>
         """)
     int markMessagesRead(@Param("userId") Long userId, @Param("messageIds") List<Long> messageIds);
+
+    @Delete("""
+        <script>
+        delete from job_message
+        where user_id = #{userId}
+        and message_id in
+        <foreach collection="messageIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        </script>
+        """)
+    int deleteMessages(@Param("userId") Long userId, @Param("messageIds") List<Long> messageIds);
 }

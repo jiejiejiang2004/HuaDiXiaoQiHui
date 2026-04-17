@@ -17,7 +17,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -226,6 +228,31 @@ public class RecruitmentService {
         return buildResumeDetail(resume);
     }
 
+    @Transactional
+    public void deleteResume(Long resumeId) {
+        Long userId = requireCandidateUserId();
+        ResumeEntity resume = requireOwnResume(resumeId, userId);
+        if (Boolean.TRUE.equals(resume.getIsDefault())) {
+            throw new BusinessException(4002, "默认简历不支持直接删除，请先切换默认简历");
+        }
+        recruitmentMapper.deleteResume(userId, resumeId);
+    }
+
+    @Transactional
+    public void setDefaultResume(Long resumeId) {
+        Long userId = requireCandidateUserId();
+        requireOwnResume(resumeId, userId);
+        recruitmentMapper.clearDefaultResume(userId);
+        recruitmentMapper.setDefaultResume(userId, resumeId);
+    }
+
+    @Transactional
+    public void updateResumePrivacy(Long resumeId, ResumePrivacyUpdateRequest request) {
+        Long userId = requireCandidateUserId();
+        requireOwnResume(resumeId, userId);
+        recruitmentMapper.updateResumePrivacy(userId, resumeId, request.privacy());
+    }
+
     public Map<String, Object> getEnterpriseResumeDetail(Long resumeId) {
         Long enterpriseId = requireEnterprise().getEnterpriseId();
         ResumeEntity resume = recruitmentMapper.findResumeById(resumeId);
@@ -248,6 +275,32 @@ public class RecruitmentService {
             throw new BusinessException(4001, "简历不存在");
         }
         return buildResumePdfResponse(resume, "RESUME_EXPORT");
+    }
+
+    @Transactional
+    public Map<String, Object> addResumeAttachment(Long resumeId, ResumeAttachmentSaveRequest request) {
+        Long userId = requireCandidateUserId();
+        requireOwnResume(resumeId, userId);
+        FileRecordEntity file = commonService.requireFileById(request.fileId());
+        ResumeAttachmentEntity attachment = new ResumeAttachmentEntity();
+        attachment.setResumeId(resumeId);
+        attachment.setFileId(file.getFileId());
+        attachment.setFileName(request.fileName());
+        attachment.setFileUrl(file.getFileUrl());
+        attachment.setUploaderId(userId);
+        recruitmentMapper.insertResumeAttachment(attachment);
+        return Map.of("attachmentId", attachment.getAttachmentId());
+    }
+
+    @Transactional
+    public void deleteResumeAttachment(Long resumeId, Long attachmentId) {
+        Long userId = requireCandidateUserId();
+        requireOwnResume(resumeId, userId);
+        ResumeAttachmentEntity attachment = recruitmentMapper.findResumeAttachmentById(attachmentId);
+        if (attachment == null || !resumeId.equals(attachment.getResumeId())) {
+            throw new BusinessException(4001, "附件不存在");
+        }
+        recruitmentMapper.deleteResumeAttachment(resumeId, attachmentId);
     }
 
     public List<Map<String, Object>> listMyResumes() {
@@ -299,6 +352,58 @@ public class RecruitmentService {
         );
     }
 
+    @Transactional
+    public Map<String, Object> batchApplyJobs(BatchApplyRequest request) {
+        Long userId = requireCandidateUserId();
+        ResumeEntity resume = requireOwnResume(request.resumeId(), userId);
+        List<Long> successJobIds = new ArrayList<>();
+        List<Long> skippedJobIds = new ArrayList<>();
+        for (Long jobId : request.jobIds()) {
+            JobEntity job = requireRecruitingJob(jobId);
+            if (recruitmentMapper.countUserApplication(jobId, userId) > 0) {
+                skippedJobIds.add(jobId);
+                continue;
+            }
+            ApplicationEntity application = new ApplicationEntity();
+            application.setJobId(job.getJobId());
+            application.setResumeId(resume.getResumeId());
+            application.setUserId(userId);
+            application.setEnterpriseId(job.getEnterpriseId());
+            application.setCoverLetter(request.coverLetter());
+            application.setStatus("PENDING");
+            recruitmentMapper.insertApplication(application);
+            CompanyInfoEntity companyInfo = recruitmentMapper.findCompanyById(job.getEnterpriseId());
+            createMessage(
+                companyInfo.getUserId(),
+                "APPLY",
+                "收到新的简历投递",
+                resume.getTitle() + " 已投递到职位 " + job.getJobName(),
+                application.getApplyId()
+            );
+            successJobIds.add(jobId);
+        }
+        return Map.of(
+            "successJobIds", successJobIds,
+            "skippedJobIds", skippedJobIds,
+            "successCount", successJobIds.size()
+        );
+    }
+
+    @Transactional
+    public void collectJob(Long jobId) {
+        Long userId = requireCandidateUserId();
+        requireRecruitingJob(jobId);
+        if (recruitmentMapper.countUserCollectedJob(jobId, userId) == 0) {
+            recruitmentMapper.insertJobCollection(userId, jobId);
+        }
+    }
+
+    @Transactional
+    public void uncollectJob(Long jobId) {
+        Long userId = requireCandidateUserId();
+        recruitmentMapper.deleteJobCollection(userId, jobId);
+    }
+
     public Map<String, Object> searchJobs(String keyword, String education, String experience, String location, int pageNum, int pageSize) {
         int offset = (pageNum - 1) * pageSize;
         List<JobEntity> jobs = recruitmentMapper.searchJobs(keyword, education, experience, location, offset, pageSize);
@@ -331,7 +436,24 @@ public class RecruitmentService {
         data.put("welfare", readJsonList(job.getWelfare()));
         Long userId = SecurityUtils.getUserId();
         data.put("applied", userId != null && recruitmentMapper.countUserApplication(jobId, userId) > 0);
-        data.put("collected", false);
+        data.put("collected", userId != null && recruitmentMapper.countUserCollectedJob(jobId, userId) > 0);
+        return data;
+    }
+
+    public Map<String, Object> listCollectedJobs(int pageNum, int pageSize) {
+        Long userId = requireCandidateUserId();
+        int offset = (pageNum - 1) * pageSize;
+        List<JobEntity> jobs = recruitmentMapper.listCollectedJobs(userId, offset, pageSize);
+        long total = recruitmentMapper.countCollectedJobs(userId);
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (JobEntity job : jobs) {
+            list.add(buildJobSummary(job));
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("list", list);
+        data.put("total", total);
+        data.put("pageNum", pageNum);
+        data.put("pageSize", pageSize);
         return data;
     }
 
@@ -494,6 +616,7 @@ public class RecruitmentService {
             item.put("refreshTime", job.getRefreshTime());
             item.put("viewCount", 0);
             item.put("applyCount", recruitmentMapper.countApplicationsByJob(job.getJobId()));
+            item.put("rejectReason", job.getAuditRemark());
             list.add(item);
         }
         Map<String, Object> data = new LinkedHashMap<>();
@@ -502,6 +625,54 @@ public class RecruitmentService {
         data.put("pageNum", pageNum);
         data.put("pageSize", pageSize);
         return data;
+    }
+
+    @Transactional
+    public void offlineEnterpriseJob(Long jobId) {
+        CompanyInfoEntity enterprise = requireEnterprise();
+        requireEnterpriseJob(jobId, enterprise.getEnterpriseId());
+        recruitmentMapper.offlineJob(enterprise.getEnterpriseId(), jobId);
+    }
+
+    @Transactional
+    public void refreshEnterpriseJob(Long jobId) {
+        CompanyInfoEntity enterprise = requireEnterprise();
+        JobEntity job = requireEnterpriseJob(jobId, enterprise.getEnterpriseId());
+        if (!"RECRUITING".equals(job.getStatus()) && !"PENDING".equals(job.getStatus())) {
+            throw new BusinessException(5002, "仅招聘中或待审核职位可刷新");
+        }
+        int refreshCount = recruitmentMapper.countJobRefreshTimes(enterprise.getEnterpriseId(), jobId, LocalDate.now());
+        if (refreshCount >= 3) {
+            throw new BusinessException(5004, "今日刷新次数已达上限");
+        }
+        recruitmentMapper.refreshJob(enterprise.getEnterpriseId(), jobId);
+        recruitmentMapper.insertJobRefreshLog(enterprise.getEnterpriseId(), jobId, LocalDate.now());
+    }
+
+    @Transactional
+    public void deleteEnterpriseJob(Long jobId) {
+        CompanyInfoEntity enterprise = requireEnterprise();
+        requireEnterpriseJob(jobId, enterprise.getEnterpriseId());
+        if (recruitmentMapper.countApplicationsByJob(jobId) > 0) {
+            throw new BusinessException(5005, "已有简历投递的职位不可删除，请先执行下架");
+        }
+        recruitmentMapper.deleteJob(enterprise.getEnterpriseId(), jobId);
+    }
+
+    public Map<String, Object> previewEnterpriseJob(Long jobId) {
+        CompanyInfoEntity enterprise = requireEnterprise();
+        requireEnterpriseJob(jobId, enterprise.getEnterpriseId());
+        return getJobDetail(jobId);
+    }
+
+    public Map<String, Object> shareEnterpriseJob(Long jobId) {
+        CompanyInfoEntity enterprise = requireEnterprise();
+        requireEnterpriseJob(jobId, enterprise.getEnterpriseId());
+        String shareUrl = "/jobs/" + jobId;
+        return Map.of(
+            "shareUrl", shareUrl,
+            "qrCodeUrl", shareUrl + "?share=qr"
+        );
     }
 
     public Map<String, Object> listEnterpriseApplications(String status, Long jobId, int pageNum, int pageSize) {
@@ -543,6 +714,134 @@ public class RecruitmentService {
         createMessage(application.getUserId(), messageType, title, content, applyId);
     }
 
+    @Transactional
+    public void batchUpdateEnterpriseApplicationStatus(List<Long> applyIds, String status) {
+        CompanyInfoEntity enterprise = requireEnterprise();
+        if (applyIds == null || applyIds.isEmpty()) {
+            return;
+        }
+        recruitmentMapper.batchUpdateApplicationStatus(enterprise.getEnterpriseId(), applyIds, status);
+    }
+
+    @Transactional
+    public Map<String, Object> createInterview(InterviewCreateRequest request) {
+        CompanyInfoEntity enterprise = requireEnterprise();
+        ApplicationEntity application = recruitmentMapper.findApplicationById(request.applyId());
+        if (application == null || !enterprise.getEnterpriseId().equals(application.getEnterpriseId())) {
+            throw new BusinessException(5001, "投递记录不存在");
+        }
+        LocalDateTime interviewTime = LocalDateTime.parse(
+            request.interviewTime(),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+        );
+        if (interviewTime.isBefore(LocalDateTime.now())) {
+            throw new BusinessException(6004, "面试时间不能早于当前时间");
+        }
+        InterviewEntity interview = new InterviewEntity();
+        interview.setApplyId(application.getApplyId());
+        interview.setEnterpriseId(enterprise.getEnterpriseId());
+        interview.setUserId(application.getUserId());
+        interview.setResumeId(application.getResumeId());
+        interview.setJobId(application.getJobId());
+        interview.setInterviewTime(interviewTime);
+        interview.setInterviewType(request.interviewType());
+        interview.setInterviewPlace(request.interviewPlace());
+        interview.setInterviewLink(request.interviewLink());
+        interview.setContactName(request.contactName());
+        interview.setContactMobile(request.contactMobile());
+        interview.setRemark(request.remark());
+        interview.setStatus("PENDING");
+        recruitmentMapper.insertInterview(interview);
+        recruitmentMapper.updateApplicationStatus(application.getApplyId(), "INVITED");
+        String content = application.getJobName()
+            + " 面试时间：" + request.interviewTime()
+            + ("ONLINE".equals(request.interviewType())
+            ? "，线上链接：" + safeText(request.interviewLink())
+            : "，面试地点：" + safeText(request.interviewPlace()));
+        createMessage(application.getUserId(), "INTERVIEW", "收到新的面试邀约", content, interview.getInterviewId());
+        return Map.of("interviewId", interview.getInterviewId());
+    }
+
+    public Map<String, Object> listEnterpriseInterviews(int pageNum, int pageSize) {
+        CompanyInfoEntity enterprise = requireEnterprise();
+        int offset = (pageNum - 1) * pageSize;
+        List<InterviewEntity> interviews = recruitmentMapper.listEnterpriseInterviews(enterprise.getEnterpriseId(), offset, pageSize);
+        long total = recruitmentMapper.countEnterpriseInterviews(enterprise.getEnterpriseId());
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (InterviewEntity interview : interviews) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("interviewId", interview.getInterviewId());
+            item.put("applyId", interview.getApplyId());
+            item.put("candidateName", interview.getCandidateName());
+            item.put("jobName", interview.getJobName());
+            item.put("resumeTitle", interview.getResumeTitle());
+            item.put("interviewTime", interview.getInterviewTime());
+            item.put("interviewType", interview.getInterviewType());
+            item.put("interviewPlace", interview.getInterviewPlace());
+            item.put("interviewLink", interview.getInterviewLink());
+            item.put("contactName", interview.getContactName());
+            item.put("contactMobile", interview.getContactMobile());
+            item.put("remark", interview.getRemark());
+            item.put("status", interview.getStatus());
+            list.add(item);
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("list", list);
+        data.put("total", total);
+        data.put("pageNum", pageNum);
+        data.put("pageSize", pageSize);
+        return data;
+    }
+
+    public Map<String, Object> searchEnterpriseTalents(
+        String keyword,
+        String major,
+        String education,
+        String experience,
+        String skillKeywords,
+        String expectCity,
+        int pageNum,
+        int pageSize
+    ) {
+        requireEnterprise();
+        int offset = (pageNum - 1) * pageSize;
+        List<ResumeEntity> resumes = recruitmentMapper.searchTalentResumes(
+            keyword, major, education, experience, skillKeywords, expectCity, offset, pageSize
+        );
+        long total = recruitmentMapper.countTalentResumes(keyword, major, education, experience, skillKeywords, expectCity);
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (ResumeEntity resume : resumes) {
+            list.add(buildTalentSummary(resume));
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("list", list);
+        data.put("total", total);
+        data.put("pageNum", pageNum);
+        data.put("pageSize", pageSize);
+        return data;
+    }
+
+    public Map<String, Object> getEnterpriseTalentDetail(Long resumeId) {
+        requireEnterprise();
+        ResumeEntity resume = requireTalentResume(resumeId);
+        return buildResumeDetail(resume);
+    }
+
+    @Transactional
+    public Map<String, Object> contactEnterpriseTalent(TalentContactRequest request) {
+        CompanyInfoEntity enterprise = requireEnterprise();
+        ResumeEntity resume = requireTalentResume(request.resumeId());
+        JobEntity job = requireEnterpriseJob(request.jobId(), enterprise.getEnterpriseId());
+        createMessage(
+            resume.getUserId(),
+            "SYSTEM",
+            "企业主动沟通邀请",
+            enterprise.getCompanyName() + " 就职位《" + job.getJobName() + "》向您发来沟通消息：" + request.message(),
+            resume.getResumeId()
+        );
+        return Map.of("resumeId", resume.getResumeId(), "jobId", job.getJobId());
+    }
+
     public Map<String, Object> listMessages(String type, String readStatus, int pageNum, int pageSize) {
         Long userId = requireLoginUserId();
         int offset = (pageNum - 1) * pageSize;
@@ -566,13 +865,64 @@ public class RecruitmentService {
         data.put("pageNum", pageNum);
         data.put("pageSize", pageSize);
         data.put("unreadCount", recruitmentMapper.countUnreadMessages(userId));
+        data.put(
+            "byType",
+            Map.of(
+                "INTERVIEW", recruitmentMapper.countUnreadMessagesByType(userId, "INTERVIEW"),
+                "REPLY", recruitmentMapper.countUnreadMessagesByType(userId, "REPLY"),
+                "SYSTEM", recruitmentMapper.countUnreadMessagesByType(userId, "SYSTEM"),
+                "APPLY", recruitmentMapper.countUnreadMessagesByType(userId, "APPLY")
+            )
+        );
         return data;
+    }
+
+    public Map<String, Object> getMessageDetail(Long messageId) {
+        Long userId = requireLoginUserId();
+        MessageEntity message = recruitmentMapper.findMessageById(userId, messageId);
+        if (message == null) {
+            throw new BusinessException(8001, "消息不存在");
+        }
+        if ("UNREAD".equals(message.getReadStatus())) {
+            recruitmentMapper.markMessagesRead(userId, List.of(messageId));
+            message.setReadStatus("READ");
+        }
+        return Map.of(
+            "messageId", message.getMessageId(),
+            "type", message.getType(),
+            "title", message.getTitle(),
+            "content", message.getContent(),
+            "bizId", message.getBizId(),
+            "readStatus", message.getReadStatus(),
+            "createTime", message.getCreateTime(),
+            "readTime", message.getReadTime()
+        );
     }
 
     @Transactional
     public void markMessagesRead(ReadMessageRequest request) {
         Long userId = requireLoginUserId();
         recruitmentMapper.markMessagesRead(userId, request == null ? null : request.messageIds());
+    }
+
+    @Transactional
+    public void deleteMessages(DeleteMessageRequest request) {
+        Long userId = requireLoginUserId();
+        recruitmentMapper.deleteMessages(userId, request.messageIds());
+    }
+
+    public Map<String, Object> countUnreadMessages() {
+        Long userId = requireLoginUserId();
+        return Map.of(
+            "total", recruitmentMapper.countUnreadMessages(userId),
+            "byType",
+            Map.of(
+                "INTERVIEW", recruitmentMapper.countUnreadMessagesByType(userId, "INTERVIEW"),
+                "REPLY", recruitmentMapper.countUnreadMessagesByType(userId, "REPLY"),
+                "SYSTEM", recruitmentMapper.countUnreadMessagesByType(userId, "SYSTEM"),
+                "APPLY", recruitmentMapper.countUnreadMessagesByType(userId, "APPLY")
+            )
+        );
     }
 
     private void authenticate(String mobile, String password) {
@@ -669,6 +1019,22 @@ public class RecruitmentService {
         return resume;
     }
 
+    private ResumeEntity requireTalentResume(Long resumeId) {
+        ResumeEntity resume = recruitmentMapper.findResumeById(resumeId);
+        if (resume == null || (!"PUBLIC".equals(resume.getPrivacy()) && !"ENTERPRISE_ONLY".equals(resume.getPrivacy()))) {
+            throw new BusinessException(4001, "公开人才不存在");
+        }
+        return resume;
+    }
+
+    private JobEntity requireEnterpriseJob(Long jobId, Long enterpriseId) {
+        JobEntity job = recruitmentMapper.findJobById(jobId);
+        if (job == null || !enterpriseId.equals(job.getEnterpriseId())) {
+            throw new BusinessException(5001, "职位不存在");
+        }
+        return job;
+    }
+
     private JobEntity requireRecruitingJob(Long jobId) {
         JobEntity job = recruitmentMapper.findJobById(jobId);
         if (job == null) {
@@ -751,8 +1117,29 @@ public class RecruitmentService {
         data.put("selfEvaluation", resume.getSelfEvaluation());
         data.put("privacy", resume.getPrivacy());
         data.put("isDefault", resume.getIsDefault());
+        data.put("attachmentList", buildAttachmentList(recruitmentMapper.listResumeAttachments(resume.getResumeId())));
         data.put("updateTime", resume.getUpdateTime());
         return data;
+    }
+
+    private Map<String, Object> buildTalentSummary(ResumeEntity resume) {
+        Map<String, Object> basicInfo = readJsonObject(resume.getBasicInfo());
+        Map<String, Object> jobIntention = readJsonObject(resume.getJobIntention());
+        List<Object> educationRows = readJsonList(resume.getEducationList());
+        Map<String, Object> latestEducation = educationRows.isEmpty() ? Map.of() : castMap(educationRows.get(0));
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("resumeId", resume.getResumeId());
+        item.put("resumeTitle", resume.getTitle());
+        item.put("candidateName", maskName(String.valueOf(basicInfo.getOrDefault("name", "求职者"))));
+        item.put("currentCity", basicInfo.get("currentCity"));
+        item.put("expectPosition", jobIntention.get("expectPosition"));
+        item.put("expectCity", jobIntention.get("expectCity"));
+        item.put("education", latestEducation.get("degree"));
+        item.put("school", latestEducation.get("school"));
+        item.put("major", latestEducation.get("major"));
+        item.put("skillList", readJsonList(resume.getSkillList()));
+        item.put("selfEvaluation", resume.getSelfEvaluation());
+        return item;
     }
 
     private Map<String, Object> buildResumePdfResponse(ResumeEntity resume, String bizType) {
@@ -862,6 +1249,20 @@ public class RecruitmentService {
             .replace("\"", "&quot;");
     }
 
+    private List<Map<String, Object>> buildAttachmentList(List<ResumeAttachmentEntity> attachments) {
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (ResumeAttachmentEntity attachment : attachments) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("attachmentId", attachment.getAttachmentId());
+            item.put("fileId", attachment.getFileId());
+            item.put("fileName", attachment.getFileName());
+            item.put("fileUrl", attachment.getFileUrl());
+            item.put("createTime", attachment.getCreateTime());
+            list.add(item);
+        }
+        return list;
+    }
+
     private Map<String, Object> buildJobSummary(JobEntity job) {
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("jobId", job.getJobId());
@@ -878,6 +1279,8 @@ public class RecruitmentService {
         item.put("publishTime", job.getPublishTime());
         item.put("status", job.getStatus());
         item.put("welfare", readJsonList(job.getWelfare()));
+        Long userId = SecurityUtils.getUserId();
+        item.put("collected", userId != null && recruitmentMapper.countUserCollectedJob(job.getJobId(), userId) > 0);
         return item;
     }
 
@@ -890,6 +1293,17 @@ public class RecruitmentService {
         message.setBizId(bizId);
         message.setReadStatus("UNREAD");
         recruitmentMapper.insertMessage(message);
+    }
+
+    private String safeText(String value) {
+        return value == null ? "" : value;
+    }
+
+    private String maskName(String name) {
+        if (name == null || name.isBlank()) {
+            return "求职者";
+        }
+        return name.length() <= 1 ? name + "*" : name.charAt(0) + "*".repeat(Math.max(1, name.length() - 1));
     }
 
     private String writeJson(Object value) {

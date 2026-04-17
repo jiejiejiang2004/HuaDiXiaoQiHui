@@ -113,6 +113,54 @@ record ReadMessageRequest(
 ) {
 }
 
+record DeleteMessageRequest(
+    @NotEmpty List<Long> messageIds
+) {
+}
+
+record ResumePrivacyUpdateRequest(
+    @NotBlank String privacy
+) {
+}
+
+record ResumeAttachmentSaveRequest(
+    @NotBlank String fileId,
+    @NotBlank String fileName
+) {
+}
+
+record BatchApplyRequest(
+    @NotEmpty List<Long> jobIds,
+    @NotNull Long resumeId,
+    String coverLetter
+) {
+}
+
+record InterviewCreateRequest(
+    @NotNull Long applyId,
+    @NotBlank String interviewTime,
+    @NotBlank String interviewType,
+    String interviewPlace,
+    String interviewLink,
+    @NotBlank String contactName,
+    @NotBlank String contactMobile,
+    String remark
+) {
+}
+
+record ApplyStatusBatchRequest(
+    @NotEmpty List<Long> applyIds,
+    @NotBlank String status
+) {
+}
+
+record TalentContactRequest(
+    @NotNull Long resumeId,
+    @NotNull Long jobId,
+    @NotBlank String message
+) {
+}
+
 record EnterpriseInfoUpdateRequest(
     String industry,
     String scale,
