@@ -1,0 +1,435 @@
+<template>
+  <div class="dashboard-page">
+    <div class="page-header">
+      <div>
+        <h1>企业招聘工作台</h1>
+        <p>维护企业信息、发布岗位、查看投递并处理简历</p>
+      </div>
+      <div class="header-actions">
+        <el-button @click="$router.push('/')">返回首页</el-button>
+        <el-button type="danger" plain @click="logout">退出</el-button>
+      </div>
+    </div>
+
+    <el-row :gutter="16">
+      <el-col :span="8">
+        <el-card shadow="hover">
+          <template #header>企业信息</template>
+          <el-form label-position="top" :model="enterpriseForm">
+            <el-form-item label="企业名称">
+              <el-input v-model="enterprise.companyName" disabled />
+            </el-form-item>
+            <el-form-item label="所属行业">
+              <el-input v-model="enterpriseForm.industry" />
+            </el-form-item>
+            <el-form-item label="企业规模">
+              <el-input v-model="enterpriseForm.scale" />
+            </el-form-item>
+            <el-form-item label="地址">
+              <el-input v-model="enterpriseForm.address" />
+            </el-form-item>
+            <el-form-item label="官网">
+              <el-input v-model="enterpriseForm.website" />
+            </el-form-item>
+            <el-form-item label="企业简介">
+              <el-input
+                v-model="enterpriseForm.introduction"
+                type="textarea"
+                :rows="4"
+              />
+            </el-form-item>
+            <el-button type="primary" @click="saveEnterpriseInfo"
+              >保存企业信息</el-button
+            >
+          </el-form>
+        </el-card>
+      </el-col>
+
+      <el-col :span="16">
+        <el-card shadow="hover">
+          <template #header>
+            <div class="card-title">
+              <span>发布职位</span>
+              <el-button type="primary" @click="saveJob">保存职位</el-button>
+            </div>
+          </template>
+          <el-form label-position="top" :model="jobForm">
+            <el-row :gutter="12">
+              <el-col :span="12">
+                <el-form-item label="职位名称">
+                  <el-input v-model="jobForm.jobName" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="职位分类">
+                  <el-input v-model="jobForm.jobCategory" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="12">
+              <el-col :span="8">
+                <el-form-item label="薪资下限">
+                  <el-input-number
+                    v-model="jobForm.salaryMin"
+                    :min="0"
+                    :step="1000"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="薪资上限">
+                  <el-input-number
+                    v-model="jobForm.salaryMax"
+                    :min="0"
+                    :step="1000"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="招聘人数">
+                  <el-input-number v-model="jobForm.headCount" :min="1" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="12">
+              <el-col :span="8">
+                <el-form-item label="工作地点">
+                  <el-input v-model="jobForm.location" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="学历要求">
+                  <el-input v-model="jobForm.education" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="经验要求">
+                  <el-input v-model="jobForm.experience" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-form-item label="岗位职责">
+              <el-input
+                v-model="jobForm.responsibility"
+                type="textarea"
+                :rows="3"
+              />
+            </el-form-item>
+            <el-form-item label="任职要求">
+              <el-input
+                v-model="jobForm.requirement"
+                type="textarea"
+                :rows="3"
+              />
+            </el-form-item>
+            <el-form-item label="福利标签">
+              <el-select
+                v-model="jobForm.welfare"
+                multiple
+                filterable
+                allow-create
+                default-first-option
+              >
+                <el-option
+                  v-for="item in welfareOptions"
+                  :key="item"
+                  :label="item"
+                  :value="item"
+                />
+              </el-select>
+            </el-form-item>
+            <el-row :gutter="12">
+              <el-col :span="12">
+                <el-form-item label="联系人">
+                  <el-input v-model="jobForm.contactName" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="联系电话">
+                  <el-input v-model="jobForm.contactMobile" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </el-form>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="16" class="section-gap">
+      <el-col :span="12">
+        <el-card shadow="hover">
+          <template #header>企业职位列表</template>
+          <el-table :data="jobs" stripe>
+            <el-table-column prop="jobName" label="职位" />
+            <el-table-column prop="status" label="状态" width="120" />
+            <el-table-column prop="applyCount" label="投递数" width="100" />
+            <el-table-column prop="publishTime" label="发布时间" />
+          </el-table>
+        </el-card>
+      </el-col>
+      <el-col :span="12">
+        <el-card shadow="hover">
+          <template #header>收到的简历</template>
+          <el-table :data="applications" stripe>
+            <el-table-column prop="candidateName" label="候选人" />
+            <el-table-column prop="jobName" label="职位" />
+            <el-table-column prop="status" label="状态" width="120" />
+            <el-table-column label="操作" width="220">
+              <template #default="{ row }">
+                <el-button text type="primary" @click="openResume(row.resumeId)"
+                  >查看</el-button
+                >
+                <el-button
+                  text
+                  type="success"
+                  @click="handleStatus(row.applyId, 'SUITABLE')"
+                  >通过</el-button
+                >
+                <el-button
+                  text
+                  type="danger"
+                  @click="handleStatus(row.applyId, 'UNSUITABLE')"
+                  >淘汰</el-button
+                >
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-dialog v-model="resumeVisible" title="简历详情" width="760px">
+      <template v-if="resumeDetail">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="姓名">{{
+            resumeDetail.basicInfo?.name
+          }}</el-descriptions-item>
+          <el-descriptions-item label="电话">{{
+            resumeDetail.basicInfo?.mobile
+          }}</el-descriptions-item>
+          <el-descriptions-item label="邮箱">{{
+            resumeDetail.basicInfo?.email
+          }}</el-descriptions-item>
+          <el-descriptions-item label="期望职位">{{
+            resumeDetail.jobIntention?.expectPosition
+          }}</el-descriptions-item>
+        </el-descriptions>
+        <div class="detail-box">
+          <h4>教育经历</h4>
+          <pre>{{ resumeDetail.educationList }}</pre>
+        </div>
+        <div class="detail-box">
+          <h4>自我评价</h4>
+          <p>{{ resumeDetail.selfEvaluation }}</p>
+        </div>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { onMounted, reactive, ref } from "vue";
+import { ElMessage } from "element-plus";
+import { useRouter } from "vue-router";
+import {
+  createEnterpriseJob,
+  getEnterpriseInfo,
+  getEnterpriseResumeDetail,
+  listEnterpriseApplies,
+  listEnterpriseJobs,
+  updateEnterpriseApplyStatus,
+  updateEnterpriseInfo,
+} from "@/api/recruit";
+import { clearAuth } from "@/utils/auth";
+
+interface EnterpriseInfo {
+  companyName?: string;
+  industry?: string;
+  scale?: string;
+  address?: string;
+  introduction?: string;
+  website?: string;
+}
+
+interface EnterpriseJobRecord {
+  jobId: number;
+  jobName: string;
+  status: string;
+  applyCount: number;
+  publishTime: string;
+}
+
+interface EnterpriseApplyRecord {
+  applyId: number;
+  resumeId: number;
+  candidateName: string;
+  jobName: string;
+  status: string;
+}
+
+interface ResumeDetail {
+  basicInfo?: Record<string, unknown>;
+  jobIntention?: Record<string, unknown>;
+  educationList?: unknown[];
+  selfEvaluation?: string;
+}
+
+interface EnterpriseJobForm {
+  jobName: string;
+  jobCategory: string;
+  responsibility: string;
+  requirement: string;
+  salaryMin: number;
+  salaryMax: number;
+  location: string;
+  headCount: number;
+  education: string;
+  experience: string;
+  welfare: string[];
+  contactName: string;
+  contactMobile: string;
+}
+
+const router = useRouter();
+const welfareOptions = ["双休", "五险一金", "带薪年假", "年度体检", "餐补"];
+const enterprise = reactive<EnterpriseInfo>({});
+const enterpriseForm = reactive({
+  industry: "互联网",
+  scale: "20-99",
+  address: "成都市郫都区",
+  introduction: "聚焦校企人才服务与数字招聘。",
+  website: "https://example.com",
+});
+const jobs = ref<EnterpriseJobRecord[]>([]);
+const applications = ref<EnterpriseApplyRecord[]>([]);
+const resumeVisible = ref(false);
+const resumeDetail = ref<ResumeDetail | null>(null);
+const jobForm = reactive<EnterpriseJobForm>({
+  jobName: "Java开发工程师",
+  jobCategory: "后端开发",
+  responsibility: "负责招聘平台核心业务开发与维护。",
+  requirement: "熟悉 Spring Boot、MySQL、Vue 基础协作流程。",
+  salaryMin: 8000,
+  salaryMax: 15000,
+  location: "成都",
+  headCount: 2,
+  education: "本科",
+  experience: "1-3年",
+  welfare: ["双休", "五险一金"],
+  contactName: "HR 李老师",
+  contactMobile: "13900000000",
+});
+
+async function loadEnterpriseInfo() {
+  const data = await getEnterpriseInfo();
+  Object.assign(enterprise, data);
+  enterpriseForm.industry = data.industry || "";
+  enterpriseForm.scale = data.scale || "";
+  enterpriseForm.address = data.address || "";
+  enterpriseForm.introduction = data.introduction || "";
+  enterpriseForm.website = data.website || "";
+}
+
+async function saveEnterpriseInfo() {
+  await updateEnterpriseInfo(enterpriseForm);
+  ElMessage.success("企业信息已更新");
+  await loadEnterpriseInfo();
+}
+
+async function saveJob() {
+  await createEnterpriseJob(jobForm);
+  ElMessage.success("职位已发布");
+  await loadJobs();
+}
+
+async function loadJobs() {
+  const data = await listEnterpriseJobs({ pageNum: 1, pageSize: 10 });
+  jobs.value = data.list || [];
+}
+
+async function loadApplications() {
+  const data = await listEnterpriseApplies({ pageNum: 1, pageSize: 10 });
+  applications.value = data.list || [];
+}
+
+async function handleStatus(applyId: number, status: string) {
+  await updateEnterpriseApplyStatus(applyId, {
+    status,
+    remark:
+      status === "SUITABLE"
+        ? "欢迎进入后续沟通环节"
+        : "感谢投递，当前岗位暂不匹配",
+  });
+  ElMessage.success("投递状态已更新");
+  await loadApplications();
+}
+
+async function openResume(resumeId: number) {
+  resumeDetail.value = await getEnterpriseResumeDetail(resumeId);
+  resumeVisible.value = true;
+}
+
+function logout() {
+  clearAuth();
+  router.push("/login");
+}
+
+onMounted(async () => {
+  await Promise.all([loadEnterpriseInfo(), loadJobs(), loadApplications()]);
+});
+</script>
+
+<style scoped>
+.dashboard-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.page-header h1 {
+  margin: 0 0 8px;
+}
+
+.page-header p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.section-gap {
+  margin-top: 16px;
+}
+
+.card-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detail-box {
+  margin-top: 16px;
+}
+
+.detail-box h4 {
+  margin: 0 0 8px;
+}
+
+.detail-box p,
+.detail-box pre {
+  margin: 0;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+</style>
