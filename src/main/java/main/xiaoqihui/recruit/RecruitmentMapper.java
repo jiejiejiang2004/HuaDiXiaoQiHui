@@ -74,6 +74,8 @@ public interface RecruitmentMapper {
             <if test="introduction != null">introduction = #{introduction},</if>
             <if test="website != null">website = #{website},</if>
             <if test="logo != null">logo = #{logo},</if>
+            <if test="authStatus != null">auth_status = #{authStatus},</if>
+            <if test="authRemark != null">auth_remark = #{authRemark},</if>
             update_time = now()
         </set>
         where enterprise_id = #{enterpriseId}
@@ -149,7 +151,9 @@ public interface RecruitmentMapper {
             welfare = #{welfare},
             contact_name = #{contactName},
             contact_mobile = #{contactMobile},
+            status = #{status},
             refresh_time = now(),
+            audit_remark = null,
             update_time = now()
         where job_id = #{jobId} and enterprise_id = #{enterpriseId}
         """)

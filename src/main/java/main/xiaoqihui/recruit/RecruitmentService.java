@@ -92,7 +92,7 @@ public class RecruitmentService {
         CompanyInfoEntity companyInfo = new CompanyInfoEntity();
         companyInfo.setUserId(user.getUserId());
         companyInfo.setCompanyName(request.companyName());
-        companyInfo.setAuthStatus("PASS");
+        companyInfo.setAuthStatus("PENDING");
         recruitmentMapper.insertCompanyInfo(companyInfo);
 
         Map<String, Object> data = buildTokenResponse(user);
@@ -301,6 +301,7 @@ public class RecruitmentService {
         data.put("introduction", companyInfo.getIntroduction());
         data.put("website", companyInfo.getWebsite());
         data.put("authStatus", companyInfo.getAuthStatus());
+        data.put("rejectReason", companyInfo.getAuthRemark());
         return data;
     }
 
@@ -319,8 +320,9 @@ public class RecruitmentService {
     @Transactional
     public Map<String, Object> createEnterpriseJob(JobPublishRequest request) {
         CompanyInfoEntity enterprise = requireEnterprise();
+        ensureEnterpriseApproved(enterprise);
         JobEntity job = toJobEntity(request, enterprise.getEnterpriseId());
-        job.setStatus("RECRUITING");
+        job.setStatus("PENDING");
         job.setPublishTime(LocalDateTime.now());
         job.setRefreshTime(LocalDateTime.now());
         recruitmentMapper.insertJob(job);
@@ -330,12 +332,14 @@ public class RecruitmentService {
     @Transactional
     public void updateEnterpriseJob(Long jobId, JobPublishRequest request) {
         CompanyInfoEntity enterprise = requireEnterprise();
+        ensureEnterpriseApproved(enterprise);
         JobEntity current = recruitmentMapper.findJobById(jobId);
         if (current == null || !enterprise.getEnterpriseId().equals(current.getEnterpriseId())) {
             throw new BusinessException(5001, "职位不存在");
         }
         JobEntity job = toJobEntity(request, enterprise.getEnterpriseId());
         job.setJobId(jobId);
+        job.setStatus("PENDING");
         recruitmentMapper.updateJob(job);
     }
 
@@ -495,6 +499,16 @@ public class RecruitmentService {
             throw new BusinessException(6001, "企业信息不存在");
         }
         return companyInfo;
+    }
+
+    private void ensureEnterpriseApproved(CompanyInfoEntity companyInfo) {
+        if ("PASS".equals(companyInfo.getAuthStatus())) {
+            return;
+        }
+        if ("REJECT".equals(companyInfo.getAuthStatus())) {
+            throw new BusinessException(6003, "企业认证已被驳回");
+        }
+        throw new BusinessException(6002, "企业认证待审核");
     }
 
     private ResumeEntity requireOwnResume(Long resumeId, Long userId) {

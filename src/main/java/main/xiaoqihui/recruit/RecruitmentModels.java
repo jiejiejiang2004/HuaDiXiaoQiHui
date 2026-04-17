@@ -16,23 +16,7 @@ class CompanyInfoEntity {
     private String website;
     private String logo;
     private String authStatus;
-    private LocalDateTime createTime;
-    private LocalDateTime updateTime;
-}
-
-@Data
-class ResumeEntity {
-    private Long resumeId;
-    private Long userId;
-    private String title;
-    private String basicInfo;
-    private String jobIntention;
-    private String educationList;
-    private String workList;
-    private String skillList;
-    private String selfEvaluation;
-    private String privacy;
-    private Boolean isDefault;
+    private String authRemark;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }
@@ -80,17 +64,4 @@ class ApplicationEntity {
     private String jobName;
     private String companyName;
     private String candidateName;
-}
-
-@Data
-class MessageEntity {
-    private Long messageId;
-    private Long userId;
-    private String type;
-    private String title;
-    private String content;
-    private Long bizId;
-    private String readStatus;
-    private LocalDateTime createTime;
-    private LocalDateTime readTime;
 }
