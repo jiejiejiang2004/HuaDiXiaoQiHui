@@ -238,6 +238,183 @@
         </el-table>
       </el-tab-pane>
 
+      <el-tab-pane label="轮播图管理" name="banner">
+        <el-row :gutter="16">
+          <el-col :span="10">
+            <el-card shadow="hover">
+              <template #header>新增轮播图</template>
+              <el-form label-position="top" :model="bannerForm">
+                <el-form-item label="标题">
+                  <el-input v-model="bannerForm.title" />
+                </el-form-item>
+                <el-form-item label="跳转链接">
+                  <el-input
+                    v-model="bannerForm.linkUrl"
+                    placeholder="https://..."
+                  />
+                </el-form-item>
+                <el-form-item label="排序">
+                  <el-input-number v-model="bannerForm.sort" :min="0" />
+                </el-form-item>
+                <el-form-item label="状态">
+                  <el-select v-model="bannerForm.status">
+                    <el-option label="ONLINE" value="ONLINE" />
+                    <el-option label="OFFLINE" value="OFFLINE" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="轮播图图片">
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png"
+                    @change="onBannerFileChange"
+                  />
+                  <p v-if="bannerPreview" class="preview-text">
+                    {{ bannerPreview }}
+                  </p>
+                </el-form-item>
+                <el-button type="primary" @click="saveBanner"
+                  >保存轮播图</el-button
+                >
+              </el-form>
+            </el-card>
+          </el-col>
+          <el-col :span="14">
+            <el-card shadow="hover">
+              <template #header>轮播图列表</template>
+              <el-table :data="banners" stripe>
+                <el-table-column prop="title" label="标题" />
+                <el-table-column prop="status" label="状态" width="120" />
+                <el-table-column prop="sort" label="排序" width="100" />
+                <el-table-column
+                  prop="imageUrl"
+                  label="图片地址"
+                  show-overflow-tooltip
+                />
+                <el-table-column label="操作" width="120">
+                  <template #default="{ row }">
+                    <el-button
+                      text
+                      type="danger"
+                      @click="removeBanner(row.bannerId)"
+                      >删除</el-button
+                    >
+                  </template>
+                </el-table-column>
+              </el-table>
+            </el-card>
+          </el-col>
+        </el-row>
+      </el-tab-pane>
+
+      <el-tab-pane label="角色权限" name="role">
+        <el-row :gutter="16">
+          <el-col :span="10">
+            <el-card shadow="hover">
+              <template #header>新增角色</template>
+              <el-form label-position="top" :model="roleForm">
+                <el-form-item label="角色名称">
+                  <el-input v-model="roleForm.roleName" />
+                </el-form-item>
+                <el-form-item label="角色编码">
+                  <el-input v-model="roleForm.roleCode" />
+                </el-form-item>
+                <el-form-item label="权限">
+                  <el-select
+                    v-model="roleForm.permissionIds"
+                    multiple
+                    collapse-tags
+                    collapse-tags-tooltip
+                  >
+                    <el-option
+                      v-for="permission in permissions"
+                      :key="permission.permissionId"
+                      :label="permission.permissionName"
+                      :value="permission.permissionId"
+                    />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="备注">
+                  <el-input
+                    v-model="roleForm.remark"
+                    type="textarea"
+                    :rows="3"
+                  />
+                </el-form-item>
+                <el-button type="primary" @click="saveRole">保存角色</el-button>
+              </el-form>
+            </el-card>
+          </el-col>
+          <el-col :span="14">
+            <el-card shadow="hover">
+              <template #header>角色列表</template>
+              <el-table :data="roles" stripe>
+                <el-table-column prop="roleName" label="角色名称" />
+                <el-table-column prop="roleCode" label="角色编码" />
+                <el-table-column label="权限">
+                  <template #default="{ row }">
+                    {{ formatPermissionNames(row.permissionIds) }}
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="120">
+                  <template #default="{ row }">
+                    <el-button
+                      text
+                      type="danger"
+                      @click="removeRole(row.roleId)"
+                      >删除</el-button
+                    >
+                  </template>
+                </el-table-column>
+              </el-table>
+            </el-card>
+          </el-col>
+        </el-row>
+      </el-tab-pane>
+
+      <el-tab-pane label="消息模板" name="message-template">
+        <div class="template-grid">
+          <el-card
+            v-for="template in messageTemplates"
+            :key="template.templateId"
+            shadow="hover"
+          >
+            <template #header>{{ template.type }}</template>
+            <el-form label-position="top">
+              <el-form-item label="标题模板">
+                <el-input v-model="template.titleTemplate" />
+              </el-form-item>
+              <el-form-item label="内容模板">
+                <el-input
+                  v-model="template.contentTemplate"
+                  type="textarea"
+                  :rows="4"
+                />
+              </el-form-item>
+              <el-form-item label="通道">
+                <el-select
+                  v-model="template.channelList"
+                  multiple
+                  collapse-tags
+                  collapse-tags-tooltip
+                >
+                  <el-option label="INSITE" value="INSITE" />
+                  <el-option label="EMAIL" value="EMAIL" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="状态">
+                <el-select v-model="template.enabled">
+                  <el-option label="ACTIVE" value="ACTIVE" />
+                  <el-option label="DISABLED" value="DISABLED" />
+                </el-select>
+              </el-form-item>
+              <el-button type="primary" @click="saveMessageTemplate(template)">
+                保存模板
+              </el-button>
+            </el-form>
+          </el-card>
+        </div>
+      </el-tab-pane>
+
       <el-tab-pane label="审核日志" name="audit-log">
         <el-table :data="auditLogs" stripe>
           <el-table-column prop="bizType" label="业务类型" width="120" />
@@ -345,21 +522,31 @@ import {
   auditEnterprise,
   auditJob,
   auditNotice,
+  createBannerAdmin,
   createCategoryAdmin,
+  createRoleAdmin,
   createSystemNotice,
-  exportStatistics,
+  deleteBannerAdmin,
   deleteCategoryAdmin,
+  deleteRoleAdmin,
   deleteSystemNotice,
+  exportStatistics,
   getPlatformOverviewStatistics,
   getCandidateDetail,
+  listBannersAdmin,
   listAuditJobs,
   listAuditLogs,
   listAuditNotices,
   listCandidates,
   listCategoriesAdmin,
   listEnterprisesAdmin,
+  listMessageTemplatesAdmin,
+  listPermissionsAdmin,
+  listRolesAdmin,
+  updateMessageTemplateAdmin,
   updateCandidateStatus,
   updateEnterpriseStatusAdmin,
+  uploadCommonFile,
 } from "@/api/recruit";
 import { resolveAssetUrl } from "@/api/http";
 import { clearAuth } from "@/utils/auth";
@@ -401,6 +588,36 @@ interface CategoryRecord {
   sort: number;
 }
 
+interface BannerRecord {
+  bannerId: number;
+  title: string;
+  imageUrl: string;
+  status: string;
+  sort: number;
+}
+
+interface PermissionRecord {
+  permissionId: number;
+  permissionName: string;
+}
+
+interface RoleRecord {
+  roleId: number;
+  roleName: string;
+  roleCode: string;
+  permissionIds: number[];
+}
+
+interface MessageTemplateRecord {
+  templateId: number;
+  type: string;
+  titleTemplate: string;
+  contentTemplate: string;
+  channels: string;
+  channelList: string[];
+  enabled: string;
+}
+
 interface AuditLogRecord {
   auditId: number;
   bizType: string;
@@ -418,9 +635,14 @@ const enterprises = ref<EnterpriseRecord[]>([]);
 const auditJobs = ref<JobAuditRecord[]>([]);
 const notices = ref<NoticeRecord[]>([]);
 const categories = ref<CategoryRecord[]>([]);
+const banners = ref<BannerRecord[]>([]);
+const permissions = ref<PermissionRecord[]>([]);
+const roles = ref<RoleRecord[]>([]);
+const messageTemplates = ref<MessageTemplateRecord[]>([]);
 const auditLogs = ref<AuditLogRecord[]>([]);
 const candidateDetailVisible = ref(false);
 const candidateDetail = ref<Record<string, unknown> | null>(null);
+const bannerPreview = ref("");
 const platformStats = reactive({
   candidateCount: 0,
   enterpriseCount: 0,
@@ -456,6 +678,22 @@ const noticeForm = reactive({
 const categoryForm = reactive({
   name: "",
   sort: 0,
+});
+
+const bannerForm = reactive({
+  title: "",
+  imageFileId: "",
+  linkUrl: "",
+  sort: 0,
+  status: "ONLINE",
+});
+
+const roleForm = reactive({
+  roleName: "",
+  roleCode: "",
+  permissionIds: [] as number[],
+  remark: "",
+  status: "ACTIVE",
 });
 
 async function loadCandidates() {
@@ -578,6 +816,112 @@ async function removeCategory(categoryId: number) {
   await loadCategories();
 }
 
+async function loadBanners() {
+  const data = await listBannersAdmin();
+  banners.value = data.list || [];
+}
+
+async function onBannerFileChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) {
+    return;
+  }
+  const data = await uploadCommonFile(file, "BANNER");
+  bannerForm.imageFileId = data.fileId;
+  bannerPreview.value = data.fileUrl;
+  ElMessage.success("轮播图图片上传成功");
+}
+
+async function saveBanner() {
+  if (!bannerForm.title || !bannerForm.imageFileId) {
+    ElMessage.warning("请填写标题并上传轮播图图片");
+    return;
+  }
+  await createBannerAdmin({
+    ...bannerForm,
+    startTime: "2026-01-01 00:00:00",
+    endTime: "2027-01-01 00:00:00",
+  });
+  bannerForm.title = "";
+  bannerForm.imageFileId = "";
+  bannerForm.linkUrl = "";
+  bannerForm.sort = 0;
+  bannerForm.status = "ONLINE";
+  bannerPreview.value = "";
+  ElMessage.success("轮播图已保存");
+  await loadBanners();
+}
+
+async function removeBanner(bannerId: number) {
+  await deleteBannerAdmin(bannerId);
+  ElMessage.success("轮播图已删除");
+  await loadBanners();
+}
+
+async function loadPermissions() {
+  const data = await listPermissionsAdmin();
+  permissions.value = data.list || [];
+}
+
+async function loadRoles() {
+  const data = await listRolesAdmin();
+  roles.value = data.list || [];
+}
+
+function formatPermissionNames(permissionIds: number[] = []) {
+  return permissions.value
+    .filter((item) => permissionIds.includes(item.permissionId))
+    .map((item) => item.permissionName)
+    .join(" / ");
+}
+
+async function saveRole() {
+  if (
+    !roleForm.roleName ||
+    !roleForm.roleCode ||
+    roleForm.permissionIds.length === 0
+  ) {
+    ElMessage.warning("请填写角色名称、编码并选择权限");
+    return;
+  }
+  await createRoleAdmin(roleForm);
+  roleForm.roleName = "";
+  roleForm.roleCode = "";
+  roleForm.permissionIds = [];
+  roleForm.remark = "";
+  roleForm.status = "ACTIVE";
+  ElMessage.success("角色已保存");
+  await loadRoles();
+}
+
+async function removeRole(roleId: number) {
+  await deleteRoleAdmin(roleId);
+  ElMessage.success("角色已删除");
+  await loadRoles();
+}
+
+async function loadMessageTemplates() {
+  const data = await listMessageTemplatesAdmin();
+  messageTemplates.value = (data.list || []).map(
+    (item: MessageTemplateRecord) => ({
+      ...item,
+      channelList: item.channels ? item.channels.split(",") : [],
+    })
+  );
+}
+
+async function saveMessageTemplate(template: MessageTemplateRecord) {
+  await updateMessageTemplateAdmin(template.templateId, {
+    titleTemplate: template.titleTemplate,
+    contentTemplate: template.contentTemplate,
+    channels: template.channelList,
+    enabled: template.enabled,
+  });
+  ElMessage.success("消息模板已保存");
+  await loadMessageTemplates();
+}
+
 async function loadAuditLogList() {
   const data = await listAuditLogs({ pageNum: 1, pageSize: 20 });
   auditLogs.value = data.list || [];
@@ -617,6 +961,11 @@ watch(
     if (tab === "job-audit") await loadAuditJobs();
     if (tab === "notice") await loadNotices();
     if (tab === "category") await loadCategories();
+    if (tab === "banner") await loadBanners();
+    if (tab === "role") {
+      await Promise.all([loadPermissions(), loadRoles()]);
+    }
+    if (tab === "message-template") await loadMessageTemplates();
     if (tab === "audit-log") await loadAuditLogList();
     if (tab === "statistics") await loadPlatformStats();
   },
@@ -631,6 +980,10 @@ onMounted(async () => {
       loadAuditJobs(),
       loadNotices(),
       loadCategories(),
+      loadBanners(),
+      loadPermissions(),
+      loadRoles(),
+      loadMessageTemplates(),
       loadAuditLogList(),
       loadPlatformStats(),
     ]);
@@ -687,6 +1040,18 @@ onMounted(async () => {
 
 .section-gap {
   margin-top: 16px;
+}
+
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.preview-text {
+  margin: 8px 0 0;
+  color: #6b7280;
+  word-break: break-all;
 }
 
 .stat-card {

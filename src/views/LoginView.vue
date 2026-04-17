@@ -15,11 +15,14 @@
         <el-tab-pane label="求职者" name="candidate">
           <el-radio-group v-model="candidateMode" class="mode-switch">
             <el-radio-button label="password">密码登录</el-radio-button>
-            <el-radio-button label="sms">验证码登录</el-radio-button>
+            <el-radio-button label="email">邮箱验证码登录</el-radio-button>
           </el-radio-group>
           <el-form label-position="top" :model="candidateForm">
             <el-form-item label="手机号">
               <el-input v-model="candidateForm.mobile" />
+            </el-form-item>
+            <el-form-item label="邮箱">
+              <el-input v-model="candidateForm.email" />
             </el-form-item>
             <el-form-item v-if="candidateMode === 'password'" label="密码">
               <el-input
@@ -28,28 +31,28 @@
                 show-password
               />
             </el-form-item>
-            <el-form-item v-else label="短信验证码">
-              <div class="sms-row">
-                <el-input v-model="candidateForm.smsCode" />
+            <el-form-item v-else label="邮箱验证码">
+              <div class="verify-row">
+                <el-input v-model="candidateForm.emailCode" />
                 <el-button
                   @click="
-                    runSafely(() => sendCode(candidateForm.mobile, 'LOGIN'))
+                    runSafely(() => sendCode(candidateForm.email, 'LOGIN'))
                   "
                   >获取验证码</el-button
                 >
               </div>
             </el-form-item>
-            <el-form-item label="注册验证码">
-              <div class="sms-row">
+            <el-form-item label="注册邮箱验证码">
+              <div class="verify-row">
                 <el-input
-                  v-model="candidateForm.registerSmsCode"
+                  v-model="candidateForm.registerEmailCode"
                   placeholder="注册时填写"
                 />
                 <el-button
                   @click="
-                    runSafely(() => sendCode(candidateForm.mobile, 'REGISTER'))
+                    runSafely(() => sendCode(candidateForm.email, 'REGISTER'))
                   "
-                  >发送注册码</el-button
+                  >发送验证码</el-button
                 >
               </div>
             </el-form-item>
@@ -59,7 +62,7 @@
                 :loading="candidateLoading"
                 @click="runSafely(handleCandidateSubmit)"
               >
-                {{ candidateMode === "password" ? "登录" : "验证码登录" }}
+                {{ candidateMode === "password" ? "登录" : "邮箱验证码登录" }}
               </el-button>
               <el-button @click="runSafely(handleCandidateRegister)"
                 >快速注册</el-button
@@ -74,11 +77,14 @@
         <el-tab-pane label="企业用户" name="enterprise">
           <el-radio-group v-model="enterpriseMode" class="mode-switch">
             <el-radio-button label="password">密码登录</el-radio-button>
-            <el-radio-button label="sms">短信注册</el-radio-button>
+            <el-radio-button label="email">邮箱注册</el-radio-button>
           </el-radio-group>
           <el-form label-position="top" :model="enterpriseForm">
             <el-form-item label="手机号">
               <el-input v-model="enterpriseForm.mobile" />
+            </el-form-item>
+            <el-form-item label="邮箱">
+              <el-input v-model="enterpriseForm.email" />
             </el-form-item>
             <el-form-item label="密码">
               <el-input
@@ -87,21 +93,23 @@
                 show-password
               />
             </el-form-item>
-            <el-form-item label="短信验证码">
-              <div class="sms-row">
+            <el-form-item label="邮箱验证码">
+              <div class="verify-row">
                 <el-input
-                  v-model="enterpriseForm.smsCode"
+                  v-model="enterpriseForm.emailCode"
                   :placeholder="
                     enterpriseMode === 'password'
-                      ? '重置或注册时使用'
+                      ? '找回密码或注册时使用'
                       : '注册时必填'
                   "
                 />
                 <el-button
                   @click="
-                    sendCode(
-                      enterpriseForm.mobile,
-                      enterpriseMode === 'password' ? 'RESET_PWD' : 'REGISTER'
+                    runSafely(() =>
+                      sendCode(
+                        enterpriseForm.email,
+                        enterpriseMode === 'password' ? 'RESET_PWD' : 'REGISTER'
+                      )
                     )
                   "
                   >获取验证码</el-button
@@ -166,14 +174,14 @@
 
     <el-dialog v-model="resetDialogVisible" title="找回密码" width="420px">
       <el-form label-position="top" :model="resetForm">
-        <el-form-item label="手机号">
-          <el-input v-model="resetForm.mobile" />
+        <el-form-item label="邮箱">
+          <el-input v-model="resetForm.email" />
         </el-form-item>
-        <el-form-item label="短信验证码">
-          <div class="sms-row">
-            <el-input v-model="resetForm.smsCode" />
+        <el-form-item label="邮箱验证码">
+          <div class="verify-row">
+            <el-input v-model="resetForm.emailCode" />
             <el-button
-              @click="runSafely(() => sendCode(resetForm.mobile, 'RESET_PWD'))"
+              @click="runSafely(() => sendCode(resetForm.email, 'RESET_PWD'))"
               >获取验证码</el-button
             >
           </div>
@@ -203,13 +211,13 @@ import { ElMessage } from "element-plus";
 import {
   adminLogin,
   candidateLogin,
-  candidateSmsLogin,
+  candidateEmailLogin,
   candidateRegister,
   enterpriseLogin,
   enterpriseRegister,
   resetEnterprisePassword,
   resetPassword,
-  sendSmsCode,
+  sendEmailCode,
 } from "@/api/recruit";
 import {
   setAccessToken,
@@ -232,16 +240,18 @@ const lastDebugCode = ref("");
 
 const candidateForm = reactive({
   mobile: "13812345678",
+  email: "candidate@example.com",
   password: "Abc@123456",
-  smsCode: "",
-  registerSmsCode: "",
+  emailCode: "",
+  registerEmailCode: "",
 });
 
 const enterpriseForm = reactive({
   mobile: "13912345678",
+  email: "enterprise@example.com",
   password: "Abc@123456",
   companyName: "成都校企科技有限公司",
-  smsCode: "",
+  emailCode: "",
 });
 
 const adminForm = reactive({
@@ -250,8 +260,8 @@ const adminForm = reactive({
 });
 
 const resetForm = reactive({
-  mobile: "",
-  smsCode: "",
+  email: "",
+  emailCode: "",
   newPassword: "",
 });
 
@@ -272,13 +282,13 @@ function saveLoginState(
   router.push(redirectPath);
 }
 
-async function sendCode(mobile: string, scene: string) {
-  if (!mobile) {
-    ElMessage.warning("请先输入手机号");
+async function sendCode(email: string, scene: string) {
+  if (!email) {
+    ElMessage.warning("请先输入邮箱");
     return;
   }
-  const data = await sendSmsCode({
-    mobile,
+  const data = await sendEmailCode({
+    email,
     scene,
     captcha: "A3F9",
     captchaKey: "debug-captcha",
@@ -309,15 +319,15 @@ async function handleCandidateLogin() {
   }
 }
 
-async function handleCandidateSmsLogin() {
+async function handleCandidateEmailLogin() {
   candidateLoading.value = true;
   try {
-    const data = await candidateSmsLogin({
-      mobile: candidateForm.mobile,
-      smsCode: candidateForm.smsCode,
+    const data = await candidateEmailLogin({
+      email: candidateForm.email,
+      emailCode: candidateForm.emailCode,
     });
     saveLoginState("CANDIDATE", data, "求职者", "/candidate");
-    ElMessage.success(data.isNewUser ? "登录成功，已自动创建账号" : "登录成功");
+    ElMessage.success("登录成功");
   } finally {
     candidateLoading.value = false;
   }
@@ -328,7 +338,7 @@ async function handleCandidateSubmit() {
     await handleCandidateLogin();
     return;
   }
-  await handleCandidateSmsLogin();
+  await handleCandidateEmailLogin();
 }
 
 async function handleCandidateRegister() {
@@ -336,7 +346,8 @@ async function handleCandidateRegister() {
   try {
     const data = await candidateRegister({
       mobile: candidateForm.mobile,
-      smsCode: candidateForm.registerSmsCode,
+      email: candidateForm.email,
+      emailCode: candidateForm.registerEmailCode,
       password: candidateForm.password,
       identity: "STUDENT",
       name: "测试求职者",
@@ -373,7 +384,8 @@ async function handleEnterpriseRegister() {
   try {
     const data = await enterpriseRegister({
       contactMobile: enterpriseForm.mobile,
-      smsCode: enterpriseForm.smsCode,
+      email: enterpriseForm.email,
+      emailCode: enterpriseForm.emailCode,
       password: enterpriseForm.password,
       contactName: "企业联系人",
       companyName: enterpriseForm.companyName,
@@ -404,9 +416,9 @@ async function handleAdminLogin() {
 
 function openResetDialog(target: "candidate" | "enterprise") {
   resetTarget.value = target;
-  resetForm.mobile =
-    target === "candidate" ? candidateForm.mobile : enterpriseForm.mobile;
-  resetForm.smsCode = "";
+  resetForm.email =
+    target === "candidate" ? candidateForm.email : enterpriseForm.email;
+  resetForm.emailCode = "";
   resetForm.newPassword = "";
   resetDialogVisible.value = true;
 }
@@ -469,7 +481,7 @@ async function submitResetPassword() {
   margin-bottom: 16px;
 }
 
-.sms-row {
+.verify-row {
   display: flex;
   width: 100%;
   gap: 12px;

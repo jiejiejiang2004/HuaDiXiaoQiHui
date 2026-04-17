@@ -1,7 +1,7 @@
 import http from "./http";
 
-export function sendSmsCode(payload: Record<string, unknown>) {
-  return http.post("/common/sms/send", payload);
+export function sendEmailCode(payload: Record<string, unknown>) {
+  return http.post("/common/email/send", payload);
 }
 
 export function uploadCommonFile(file: File, bizType: string) {
@@ -27,8 +27,8 @@ export function candidateLogin(payload: Record<string, unknown>) {
   return http.post("/user/login/password", payload);
 }
 
-export function candidateSmsLogin(payload: Record<string, unknown>) {
-  return http.post("/user/login/sms", payload);
+export function candidateEmailLogin(payload: Record<string, unknown>) {
+  return http.post("/user/login/email", payload);
 }
 
 export function resetPassword(payload: Record<string, unknown>) {
@@ -249,6 +249,45 @@ export function listSystemNotices(params: Record<string, unknown>) {
 
 export function createSystemNotice(payload: Record<string, unknown>) {
   return http.post("/admin/system/notices", payload);
+}
+
+export function listBannersAdmin() {
+  return http.get("/admin/system/banners");
+}
+
+export function createBannerAdmin(payload: Record<string, unknown>) {
+  return http.post("/admin/system/banners", payload);
+}
+
+export function deleteBannerAdmin(bannerId: number) {
+  return http.delete(`/admin/system/banners/${bannerId}`);
+}
+
+export function listPermissionsAdmin() {
+  return http.get("/admin/system/permissions");
+}
+
+export function listRolesAdmin() {
+  return http.get("/admin/system/roles");
+}
+
+export function createRoleAdmin(payload: Record<string, unknown>) {
+  return http.post("/admin/system/roles", payload);
+}
+
+export function deleteRoleAdmin(roleId: number) {
+  return http.delete(`/admin/system/roles/${roleId}`);
+}
+
+export function listMessageTemplatesAdmin(params?: Record<string, unknown>) {
+  return http.get("/admin/system/message/templates", { params });
+}
+
+export function updateMessageTemplateAdmin(
+  templateId: number,
+  payload: Record<string, unknown>
+) {
+  return http.put(`/admin/system/message/templates/${templateId}`, payload);
 }
 
 export function deleteSystemNotice(noticeId: number) {
