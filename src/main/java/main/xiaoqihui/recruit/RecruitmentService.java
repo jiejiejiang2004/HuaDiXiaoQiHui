@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import main.xiaoqihui.common.auth.RedisTokenStore;
 import main.xiaoqihui.common.CommonService;
+import main.xiaoqihui.common.document.HtmlPdfRenderService;
 import main.xiaoqihui.common.domain.FileRecordEntity;
 import main.xiaoqihui.common.exception.BusinessException;
 import main.xiaoqihui.common.security.LoginUser;
@@ -32,6 +33,7 @@ public class RecruitmentService {
     private final ObjectMapper objectMapper;
     private final CommonService commonService;
     private final RedisTokenStore redisTokenStore;
+    private final HtmlPdfRenderService htmlPdfRenderService;
 
     public RecruitmentService(
         RecruitmentMapper recruitmentMapper,
@@ -40,7 +42,8 @@ public class RecruitmentService {
         JwtUtil jwtUtil,
         ObjectMapper objectMapper,
         CommonService commonService,
-        RedisTokenStore redisTokenStore
+        RedisTokenStore redisTokenStore,
+        HtmlPdfRenderService htmlPdfRenderService
     ) {
         this.recruitmentMapper = recruitmentMapper;
         this.passwordEncoder = passwordEncoder;
@@ -49,6 +52,7 @@ public class RecruitmentService {
         this.objectMapper = objectMapper;
         this.commonService = commonService;
         this.redisTokenStore = redisTokenStore;
+        this.htmlPdfRenderService = htmlPdfRenderService;
     }
 
     @Transactional
@@ -229,6 +233,21 @@ public class RecruitmentService {
             throw new BusinessException(4001, "简历不存在");
         }
         return buildResumeDetail(resume);
+    }
+
+    public Map<String, Object> exportResumePdf(Long resumeId) {
+        Long userId = requireCandidateUserId();
+        ResumeEntity resume = requireOwnResume(resumeId, userId);
+        return buildResumePdfResponse(resume, "RESUME_EXPORT");
+    }
+
+    public Map<String, Object> exportEnterpriseResumePdf(Long resumeId) {
+        Long enterpriseId = requireEnterprise().getEnterpriseId();
+        ResumeEntity resume = recruitmentMapper.findResumeById(resumeId);
+        if (resume == null || recruitmentMapper.countEnterpriseResumeAccess(enterpriseId, resumeId) == 0) {
+            throw new BusinessException(4001, "简历不存在");
+        }
+        return buildResumePdfResponse(resume, "RESUME_EXPORT");
     }
 
     public List<Map<String, Object>> listMyResumes() {
@@ -734,6 +753,113 @@ public class RecruitmentService {
         data.put("isDefault", resume.getIsDefault());
         data.put("updateTime", resume.getUpdateTime());
         return data;
+    }
+
+    private Map<String, Object> buildResumePdfResponse(ResumeEntity resume, String bizType) {
+        Map<String, Object> detail = buildResumeDetail(resume);
+        String fileName = resume.getTitle() + "-" + resume.getResumeId() + ".pdf";
+        byte[] pdf = htmlPdfRenderService.render(buildResumeHtml(detail));
+        FileRecordEntity fileRecord = commonService.saveGeneratedFile(bizType, fileName, pdf);
+        return Map.of(
+            "fileId", fileRecord.getFileId(),
+            "fileName", fileName,
+            "downloadUrl", fileRecord.getFileUrl()
+        );
+    }
+
+    private String buildResumeHtml(Map<String, Object> detail) {
+        Map<String, Object> basicInfo = castMap(detail.get("basicInfo"));
+        Map<String, Object> jobIntention = castMap(detail.get("jobIntention"));
+        List<Object> educationList = castList(detail.get("educationList"));
+        List<Object> workList = castList(detail.get("workList"));
+        List<Object> skillList = castList(detail.get("skillList"));
+        StringBuilder html = new StringBuilder();
+        html.append("""
+            <html>
+            <body style="font-family:Arial,'Microsoft YaHei',sans-serif;color:#1f2937;padding:24px;">
+            <div style="max-width:860px;margin:0 auto;">
+              <h1 style="margin-bottom:8px;">校企慧简历导出</h1>
+              <p style="color:#6b7280;margin-bottom:24px;">简历标题：%s</p>
+              <table style="width:100%%;border-collapse:collapse;margin-bottom:24px;">
+                <tr><td style="padding:8px;border:1px solid #e5e7eb;">姓名</td><td style="padding:8px;border:1px solid #e5e7eb;">%s</td><td style="padding:8px;border:1px solid #e5e7eb;">电话</td><td style="padding:8px;border:1px solid #e5e7eb;">%s</td></tr>
+                <tr><td style="padding:8px;border:1px solid #e5e7eb;">邮箱</td><td style="padding:8px;border:1px solid #e5e7eb;">%s</td><td style="padding:8px;border:1px solid #e5e7eb;">现居城市</td><td style="padding:8px;border:1px solid #e5e7eb;">%s</td></tr>
+              </table>
+              <h2>求职意向</h2>
+              <p>期望职位：%s</p>
+              <p>期望行业：%s</p>
+              <p>期望城市：%s</p>
+              <p>期望薪资：%s - %s</p>
+              <h2>教育经历</h2>
+            """.formatted(
+            escapeHtml(detail.get("title")),
+            escapeHtml(basicInfo.get("name")),
+            escapeHtml(basicInfo.get("mobile")),
+            escapeHtml(basicInfo.get("email")),
+            escapeHtml(basicInfo.get("currentCity")),
+            escapeHtml(jobIntention.get("expectPosition")),
+            escapeHtml(jobIntention.get("expectIndustry")),
+            escapeHtml(jobIntention.get("expectCity")),
+            escapeHtml(jobIntention.get("expectSalaryMin")),
+            escapeHtml(jobIntention.get("expectSalaryMax"))
+        ));
+
+        appendSectionList(html, educationList, "school", "major", "degree", "startDate", "endDate");
+        html.append("<h2>工作经历</h2>");
+        appendSectionList(html, workList, "company", "position", "description", "startDate", "endDate");
+        html.append("<h2>技能标签</h2><p>").append(escapeHtml(joinSkillList(skillList))).append("</p>");
+        html.append("<h2>自我评价</h2><p>").append(escapeHtml(detail.get("selfEvaluation"))).append("</p>");
+        html.append("</div></body></html>");
+        return html.toString();
+    }
+
+    private void appendSectionList(StringBuilder html, List<Object> rows, String primaryKey, String secondaryKey, String tertiaryKey, String startKey, String endKey) {
+        if (rows.isEmpty()) {
+            html.append("<p>暂无数据</p>");
+            return;
+        }
+        for (Object row : rows) {
+            Map<String, Object> item = castMap(row);
+            html.append("<div style=\"margin-bottom:12px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;\">")
+                .append("<p><strong>").append(escapeHtml(item.get(primaryKey))).append("</strong> / ")
+                .append(escapeHtml(item.get(secondaryKey))).append("</p>")
+                .append("<p>").append(escapeHtml(item.get(tertiaryKey))).append("</p>")
+                .append("<p>").append(escapeHtml(item.get(startKey))).append(" - ").append(escapeHtml(item.get(endKey))).append("</p>")
+                .append("</div>");
+        }
+    }
+
+    private String joinSkillList(List<Object> skillList) {
+        List<String> values = new ArrayList<>();
+        for (Object row : skillList) {
+            Map<String, Object> item = castMap(row);
+            values.add(String.valueOf(item.getOrDefault("name", item.getOrDefault("skill", ""))));
+        }
+        return String.join(" / ", values);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> castMap(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            return (Map<String, Object>) map;
+        }
+        return Map.of();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Object> castList(Object value) {
+        if (value instanceof List<?> list) {
+            return (List<Object>) list;
+        }
+        return List.of();
+    }
+
+    private String escapeHtml(Object value) {
+        String text = value == null ? "" : String.valueOf(value);
+        return text
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;");
     }
 
     private Map<String, Object> buildJobSummary(JobEntity job) {

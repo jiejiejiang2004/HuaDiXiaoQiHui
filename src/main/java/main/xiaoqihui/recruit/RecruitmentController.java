@@ -125,6 +125,11 @@ public class RecruitmentController {
         return ApiResponse.success(recruitmentService.getResumeDetail(resumeId));
     }
 
+    @GetMapping("/resume/{resumeId}/export/pdf")
+    public ApiResponse<?> exportResumePdf(@PathVariable Long resumeId) {
+        return ApiResponse.success(recruitmentService.exportResumePdf(resumeId));
+    }
+
     @GetMapping("/resume/my")
     public ApiResponse<?> listMyResumes() {
         return ApiResponse.success(java.util.Map.of("list", recruitmentService.listMyResumes()));
@@ -224,5 +229,10 @@ public class RecruitmentController {
     @GetMapping("/enterprise/resumes/{resumeId}")
     public ApiResponse<?> getEnterpriseResumeDetail(@PathVariable Long resumeId) {
         return ApiResponse.success(recruitmentService.getEnterpriseResumeDetail(resumeId));
+    }
+
+    @GetMapping("/enterprise/resumes/{resumeId}/export/pdf")
+    public ApiResponse<?> exportEnterpriseResumePdf(@PathVariable Long resumeId) {
+        return ApiResponse.success(recruitmentService.exportEnterpriseResumePdf(resumeId));
     }
 }

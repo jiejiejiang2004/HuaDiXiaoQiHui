@@ -8,6 +8,7 @@ import main.xiaoqihui.common.exception.BusinessException;
 import main.xiaoqihui.common.mail.MailSenderService;
 import main.xiaoqihui.common.queue.TaskQueueService;
 import main.xiaoqihui.common.util.SecurityUtils;
+import main.xiaoqihui.common.util.SecurityUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -16,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
@@ -141,6 +143,10 @@ public class CommonService {
     }
 
     public FileRecordEntity saveGeneratedFile(String bizType, String fileName, String content) {
+        return saveGeneratedFile(bizType, fileName, content.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public FileRecordEntity saveGeneratedFile(String bizType, String fileName, byte[] content) {
         String extension = getExtension(fileName);
         String fileId = UUID.randomUUID().toString().replace("-", "");
         String storedName = fileId + "." + extension;
@@ -149,7 +155,7 @@ public class CommonService {
 
         try {
             Files.createDirectories(targetDir);
-            Files.writeString(targetPath, content, StandardCharsets.UTF_8);
+            Files.write(targetPath, content);
         } catch (IOException ex) {
             throw new BusinessException(7001, "报表导出失败");
         }
@@ -165,6 +171,26 @@ public class CommonService {
         entity.setUploaderId(SecurityUtils.getUserId());
         commonMapper.insertFileRecord(entity);
         return entity;
+    }
+
+    public DownloadableFile loadDownloadableFile(String fileId) {
+        FileRecordEntity entity = requireFileById(fileId);
+        Long currentUserId = SecurityUtils.getUserId();
+        String userType = SecurityUtils.getUserType();
+        if (
+            currentUserId == null ||
+            (!currentUserId.equals(entity.getUploaderId()) && !"ADMIN".equals(userType))
+        ) {
+            throw new BusinessException(2002, "当前用户无权下载该文件");
+        }
+        try {
+            Path path = Paths.get(entity.getFilePath()).toAbsolutePath().normalize();
+            return new DownloadableFile(entity, Files.readAllBytes(path));
+        } catch (NoSuchFileException ex) {
+            throw new BusinessException(7001, "文件不存在");
+        } catch (IOException ex) {
+            throw new BusinessException(7001, "文件读取失败");
+        }
     }
 
     public Map<String, Object> getDict(String dictType) {
@@ -224,5 +250,8 @@ public class CommonService {
 
     private String buildEmailKey(String email, String scene) {
         return emailCodePrefix + ":" + scene + ":" + email;
+    }
+
+    public record DownloadableFile(FileRecordEntity metadata, byte[] content) {
     }
 }

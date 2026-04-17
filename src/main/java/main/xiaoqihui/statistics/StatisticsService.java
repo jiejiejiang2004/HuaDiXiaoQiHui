@@ -5,8 +5,13 @@ import main.xiaoqihui.common.domain.FileRecordEntity;
 import main.xiaoqihui.common.exception.BusinessException;
 import main.xiaoqihui.common.util.SecurityUtils;
 import main.xiaoqihui.recruit.RecruitmentMapper;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -97,9 +102,10 @@ public class StatisticsService {
             throw new BusinessException(2002, "当前用户无权导出平台统计");
         }
 
-        String content = buildExportContent(type);
-        String fileName = "statistics-" + type.toLowerCase() + "-" + LocalDate.now() + ".csv";
-        FileRecordEntity fileRecord = commonService.saveGeneratedFile("REPORT", fileName, content);
+        String format = request.format() == null || request.format().isBlank() ? "xlsx" : request.format().toLowerCase();
+        ExportFile exportFile = buildExportFile(type, format);
+        String fileName = "statistics-" + type.toLowerCase() + "-" + LocalDate.now() + "." + exportFile.extension();
+        FileRecordEntity fileRecord = commonService.saveGeneratedFile("REPORT", fileName, exportFile.content());
 
         ExportTaskEntity task = new ExportTaskEntity();
         task.setTaskId(UUID.randomUUID().toString().replace("-", ""));
@@ -114,38 +120,83 @@ public class StatisticsService {
             "taskId", task.getTaskId(),
             "status", task.getStatus(),
             "downloadUrl", fileRecord.getFileUrl(),
-            "fileId", fileRecord.getFileId()
+            "fileId", fileRecord.getFileId(),
+            "fileName", fileName
         );
     }
 
-    private String buildExportContent(String type) {
-        StringBuilder builder = new StringBuilder();
+    private ExportFile buildExportFile(String type, String format) {
+        Map<String, Object> data = loadExportMetrics(type);
+        if ("csv".equalsIgnoreCase(format)) {
+            return new ExportFile("csv", buildCsvContent(type, data));
+        }
+        return new ExportFile("xlsx", buildExcelContent(type, data));
+    }
+
+    private Map<String, Object> loadExportMetrics(String type) {
         if ("CANDIDATE".equals(type)) {
-            Map<String, Object> data = candidateStatistics();
-            builder.append("指标,值\n")
-                .append("投递次数,").append(data.get("applyCount")).append('\n')
-                .append("面试次数,").append(data.get("interviewCount")).append('\n')
-                .append("被查看次数,").append(data.get("viewedCount")).append('\n')
-                .append("收藏次数,").append(data.get("favoriteCount")).append('\n');
-            return builder.toString();
+            return candidateStatistics();
         }
         if ("ENTERPRISE".equals(type)) {
-            Map<String, Object> data = enterpriseStatistics();
-            builder.append("指标,值\n")
-                .append("职位浏览量,").append(data.get("jobViewCount")).append('\n')
-                .append("收到简历数,").append(data.get("resumeReceivedCount")).append('\n')
-                .append("面试邀约数,").append(data.get("interviewCount")).append('\n')
-                .append("招聘中职位数,").append(data.get("activeJobCount")).append('\n');
-            return builder.toString();
+            return enterpriseStatistics();
         }
-        Map<String, Object> data = platformOverviewStatistics();
-        builder.append("指标,值\n")
-            .append("个人用户数,").append(data.get("candidateCount")).append('\n')
-            .append("企业用户数,").append(data.get("enterpriseCount")).append('\n')
-            .append("职位总数,").append(data.get("jobCount")).append('\n')
-            .append("投递总数,").append(data.get("applyCount")).append('\n')
-            .append("面试总数,").append(data.get("interviewCount")).append('\n');
-        return builder.toString();
+        return platformOverviewStatistics();
+    }
+
+    private byte[] buildExcelContent(String type, Map<String, Object> data) {
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            XSSFSheet sheet = workbook.createSheet(type + "_statistics");
+            int rowNum = 0;
+            Row header = sheet.createRow(rowNum++);
+            header.createCell(0).setCellValue("指标");
+            header.createCell(1).setCellValue("值");
+
+            for (Map.Entry<String, Object> entry : buildMetricMap(type, data).entrySet()) {
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(entry.getKey());
+                row.createCell(1).setCellValue(String.valueOf(entry.getValue()));
+            }
+
+            sheet.autoSizeColumn(0);
+            sheet.autoSizeColumn(1);
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        } catch (IOException ex) {
+            throw new BusinessException(7001, "Excel 导出失败");
+        }
+    }
+
+    private byte[] buildCsvContent(String type, Map<String, Object> data) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("指标,值\n");
+        for (Map.Entry<String, Object> entry : buildMetricMap(type, data).entrySet()) {
+            builder.append(entry.getKey()).append(',').append(entry.getValue()).append('\n');
+        }
+        return builder.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private Map<String, Object> buildMetricMap(String type, Map<String, Object> data) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        if ("CANDIDATE".equals(type)) {
+            result.put("投递次数", data.get("applyCount"));
+            result.put("面试次数", data.get("interviewCount"));
+            result.put("被查看次数", data.get("viewedCount"));
+            result.put("收藏次数", data.get("favoriteCount"));
+            return result;
+        }
+        if ("ENTERPRISE".equals(type)) {
+            result.put("职位浏览量", data.get("jobViewCount"));
+            result.put("收到简历数", data.get("resumeReceivedCount"));
+            result.put("面试邀约数", data.get("interviewCount"));
+            result.put("招聘中职位数", data.get("activeJobCount"));
+            return result;
+        }
+        result.put("个人用户数", data.get("candidateCount"));
+        result.put("企业用户数", data.get("enterpriseCount"));
+        result.put("职位总数", data.get("jobCount"));
+        result.put("投递总数", data.get("applyCount"));
+        result.put("面试总数", data.get("interviewCount"));
+        return result;
     }
 
     private Long requireRole(String role) {
@@ -162,5 +213,8 @@ public class StatisticsService {
             throw new BusinessException(2001, "用户未登录或Token失效");
         }
         return userId;
+    }
+
+    private record ExportFile(String extension, byte[] content) {
     }
 }
