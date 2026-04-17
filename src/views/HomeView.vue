@@ -52,6 +52,15 @@
         <el-form-item>
           <el-button type="primary" @click="loadJobs">搜索职位</el-button>
         </el-form-item>
+        <el-form-item v-if="isCandidate">
+          <el-button
+            type="success"
+            :disabled="selectedJobIds.length === 0"
+            @click="batchApplySelectedJobs"
+          >
+            批量投递已选职位
+          </el-button>
+        </el-form-item>
       </el-form>
     </el-card>
 
@@ -80,6 +89,21 @@
           }}</el-tag>
         </div>
         <div class="job-actions">
+          <el-checkbox
+            v-if="isCandidate"
+            :model-value="selectedJobIds.includes(job.jobId)"
+            @change="toggleSelectedJob(job.jobId, $event)"
+          >
+            选择
+          </el-checkbox>
+          <el-button
+            v-if="isCandidate"
+            text
+            :type="job.collected ? 'warning' : 'default'"
+            @click="toggleCollect(job)"
+          >
+            {{ job.collected ? "取消收藏" : "收藏职位" }}
+          </el-button>
           <el-button text type="primary" @click="openDetail(job.jobId)"
             >查看详情</el-button
           >
@@ -121,8 +145,14 @@
       </template>
       <template #footer>
         <el-button @click="detailVisible = false">关闭</el-button>
-        <el-button type="primary" @click="goLogin('candidate')"
+        <el-button
+          v-if="!isCandidate"
+          type="primary"
+          @click="goLogin('candidate')"
           >登录后投递</el-button
+        >
+        <el-button v-else type="primary" @click="applyCurrentJob"
+          >立即投递</el-button
         >
       </template>
     </el-dialog>
@@ -130,9 +160,19 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
+import { ElMessage } from "element-plus";
 import { useRouter } from "vue-router";
-import { getJobDetail, searchJobs } from "@/api/recruit";
+import {
+  applyJob,
+  batchApplyJobs,
+  collectJob,
+  getJobDetail,
+  listResumes,
+  searchJobs,
+  uncollectJob,
+} from "@/api/recruit";
+import { getUserType } from "@/utils/auth";
 
 interface JobSummary {
   jobId: number;
@@ -146,6 +186,7 @@ interface JobSummary {
   welfare?: string[];
   responsibility?: string;
   requirement?: string;
+  collected?: boolean;
 }
 
 const router = useRouter();
@@ -156,6 +197,8 @@ const pageNum = ref(1);
 const pageSize = 10;
 const detailVisible = ref(false);
 const jobDetail = ref<JobSummary | null>(null);
+const selectedJobIds = ref<number[]>([]);
+const isCandidate = computed(() => getUserType() === "CANDIDATE");
 const filters = reactive({
   keyword: "",
   education: "",
@@ -181,6 +224,71 @@ async function loadJobs() {
 async function openDetail(jobId: number) {
   jobDetail.value = await getJobDetail(jobId);
   detailVisible.value = true;
+}
+
+function toggleSelectedJob(jobId: number, checked: string | number | boolean) {
+  if (!checked) {
+    selectedJobIds.value = selectedJobIds.value.filter((id) => id !== jobId);
+    return;
+  }
+  if (!selectedJobIds.value.includes(jobId)) {
+    selectedJobIds.value.push(jobId);
+  }
+}
+
+async function getDefaultResumeId() {
+  const data = await listResumes();
+  const defaultResume =
+    (data.list || []).find((item: Record<string, unknown>) => item.isDefault) ||
+    data.list?.[0];
+  if (!defaultResume) {
+    throw new Error("请先在个人中心创建简历");
+  }
+  return Number(defaultResume.resumeId);
+}
+
+async function applyCurrentJob() {
+  if (!jobDetail.value) {
+    return;
+  }
+  const resumeId = await getDefaultResumeId();
+  await applyJob({ jobId: jobDetail.value.jobId, resumeId });
+  ElMessage.success("职位投递成功");
+  await openDetail(jobDetail.value.jobId);
+}
+
+async function batchApplySelectedJobs() {
+  if (!selectedJobIds.value.length) {
+    ElMessage.warning("请先选择职位");
+    return;
+  }
+  const resumeId = await getDefaultResumeId();
+  const data = await batchApplyJobs({
+    jobIds: selectedJobIds.value,
+    resumeId,
+  });
+  ElMessage.success(`批量投递完成，成功 ${data.successCount} 个职位`);
+  selectedJobIds.value = [];
+  await loadJobs();
+}
+
+async function toggleCollect(job: JobSummary) {
+  if (!isCandidate.value) {
+    goLogin("candidate");
+    return;
+  }
+  if (job.collected) {
+    await uncollectJob(job.jobId);
+    job.collected = false;
+    ElMessage.success("已取消收藏");
+  } else {
+    await collectJob(job.jobId);
+    job.collected = true;
+    ElMessage.success("已收藏职位");
+  }
+  if (jobDetail.value?.jobId === job.jobId) {
+    jobDetail.value.collected = job.collected;
+  }
 }
 
 function handlePageChange(page: number) {

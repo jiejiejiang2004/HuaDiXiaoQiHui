@@ -89,7 +89,11 @@
             <div class="card-title">
               <span>我的简历</span>
               <div class="header-actions-inline">
+                <el-button @click="saveAsDefaultResume">设为默认</el-button>
                 <el-button @click="downloadResumePdf">导出 PDF</el-button>
+                <el-button type="danger" plain @click="removeResume"
+                  >删除</el-button
+                >
                 <el-button type="primary" @click="saveResume"
                   >保存默认简历</el-button
                 >
@@ -141,6 +145,55 @@
                 class="inline-input"
               />
             </el-form-item>
+            <el-form-item label="隐私设置">
+              <el-select
+                v-model="resumeForm.privacy"
+                @change="saveResumePrivacy"
+              >
+                <el-option label="公开" value="PUBLIC" />
+                <el-option label="企业可见" value="ENTERPRISE_ONLY" />
+                <el-option label="隐藏" value="HIDDEN" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="简历附件">
+              <el-upload
+                action="#"
+                :show-file-list="false"
+                :http-request="uploadResumeAttachmentRequest"
+              >
+                <el-button>上传附件</el-button>
+              </el-upload>
+              <div v-if="attachmentList.length" class="attachment-list">
+                <div
+                  v-for="attachment in attachmentList"
+                  :key="attachment.attachmentId"
+                  class="attachment-item"
+                >
+                  <span>{{ attachment.fileName }}</span>
+                  <div class="attachment-actions">
+                    <el-button
+                      text
+                      type="primary"
+                      @click="
+                        downloadGeneratedFile(
+                          attachment.fileId,
+                          attachment.fileName
+                        )
+                      "
+                    >
+                      下载
+                    </el-button>
+                    <el-button
+                      text
+                      type="danger"
+                      @click="removeAttachment(attachment.attachmentId)"
+                    >
+                      删除
+                    </el-button>
+                  </div>
+                </div>
+              </div>
+            </el-form-item>
             <el-form-item label="自我评价">
               <el-input
                 v-model="resumeForm.selfEvaluation"
@@ -170,9 +223,12 @@
           <template #header>
             <div class="card-title">
               <span>消息中心</span>
-              <el-button text type="primary" @click="readAllMessages"
-                >全部已读</el-button
-              >
+              <div class="header-actions-inline">
+                <span class="badge-text">未读 {{ unreadCount }}</span>
+                <el-button text type="primary" @click="readAllMessages"
+                  >全部已读</el-button
+                >
+              </div>
             </div>
           </template>
           <el-timeline>
@@ -184,8 +240,44 @@
             >
               <strong>{{ message.title }}</strong>
               <p>{{ message.content }}</p>
+              <div class="message-actions">
+                <el-button
+                  text
+                  type="primary"
+                  @click="openMessage(message.messageId)"
+                  >详情</el-button
+                >
+                <el-button
+                  text
+                  type="danger"
+                  @click="removeMessage(message.messageId)"
+                  >删除</el-button
+                >
+              </div>
             </el-timeline-item>
           </el-timeline>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-dialog v-model="messageVisible" title="消息详情" width="560px">
+      <div v-if="currentMessage" class="message-detail">
+        <h3>{{ currentMessage.title }}</h3>
+        <p>{{ currentMessage.content }}</p>
+      </div>
+    </el-dialog>
+
+    <el-row :gutter="16" class="section-gap">
+      <el-col :span="24">
+        <el-card shadow="hover">
+          <template #header>收藏职位</template>
+          <el-table :data="favoriteJobs" stripe>
+            <el-table-column prop="jobName" label="职位" />
+            <el-table-column prop="companyName" label="企业" />
+            <el-table-column prop="location" label="地点" />
+            <el-table-column prop="salaryMin" label="薪资下限" width="120" />
+            <el-table-column prop="salaryMax" label="薪资上限" width="120" />
+          </el-table>
         </el-card>
       </el-col>
     </el-row>
@@ -194,21 +286,32 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from "vue";
-import { ElMessage } from "element-plus";
+import { ElMessage, UploadRequestOptions } from "element-plus";
 import { useRouter } from "vue-router";
 import {
+  addResumeAttachment,
   createResume,
+  deleteMessages,
+  deleteResume,
+  deleteResumeAttachment,
   downloadGeneratedFile,
   exportResumePdf,
   exportStatistics,
   getCandidateStatistics,
+  getMessageDetail,
   getProfile,
+  getResumeDetail,
+  getUnreadMessageCount,
+  listCollectedJobs,
   listMessages,
   listMyApplies,
   listResumes,
   markMessagesRead,
+  setDefaultResume,
+  updateResumePrivacy,
   updateProfile,
   updateResume,
+  uploadCommonFile,
 } from "@/api/recruit";
 import { clearAuth } from "@/utils/auth";
 
@@ -237,6 +340,21 @@ interface MessageRecord {
   readStatus: string;
 }
 
+interface AttachmentRecord {
+  attachmentId: number;
+  fileId: string;
+  fileName: string;
+}
+
+interface FavoriteJobRecord {
+  jobId: number;
+  jobName: string;
+  companyName: string;
+  location: string;
+  salaryMin: number;
+  salaryMax: number;
+}
+
 interface ResumeForm {
   title: string;
   basicInfo: Record<string, unknown>;
@@ -259,6 +377,11 @@ const profileForm = reactive({
 const resumeId = ref<number | null>(null);
 const applyList = ref<ApplyRecord[]>([]);
 const messages = ref<MessageRecord[]>([]);
+const unreadCount = ref(0);
+const messageVisible = ref(false);
+const currentMessage = ref<MessageRecord | null>(null);
+const attachmentList = ref<AttachmentRecord[]>([]);
+const favoriteJobs = ref<FavoriteJobRecord[]>([]);
 const statistics = reactive({
   applyCount: 0,
   interviewCount: 0,
@@ -316,6 +439,18 @@ async function loadResume() {
     return;
   }
   resumeId.value = firstResume.resumeId;
+  const detail = await getResumeDetail(firstResume.resumeId);
+  resumeForm.title = detail.title || resumeForm.title;
+  resumeForm.basicInfo = detail.basicInfo || resumeForm.basicInfo;
+  resumeForm.jobIntention = detail.jobIntention || resumeForm.jobIntention;
+  resumeForm.educationList = detail.educationList?.length
+    ? detail.educationList
+    : resumeForm.educationList;
+  resumeForm.workList = detail.workList || [];
+  resumeForm.skillList = detail.skillList || [];
+  resumeForm.selfEvaluation = detail.selfEvaluation || "";
+  resumeForm.privacy = detail.privacy || "ENTERPRISE_ONLY";
+  attachmentList.value = detail.attachmentList || [];
 }
 
 async function saveProfile() {
@@ -345,6 +480,12 @@ async function loadApplies() {
 async function loadMessages() {
   const data = await listMessages({ pageNum: 1, pageSize: 10 });
   messages.value = data.list || [];
+  unreadCount.value = data.unreadCount || 0;
+}
+
+async function loadFavoriteJobs() {
+  const data = await listCollectedJobs({ pageNum: 1, pageSize: 20 });
+  favoriteJobs.value = data.list || [];
 }
 
 async function loadStatistics() {
@@ -375,10 +516,84 @@ async function downloadResumePdf() {
   await downloadGeneratedFile(data.fileId, data.fileName);
 }
 
+async function saveAsDefaultResume() {
+  if (!resumeId.value) {
+    ElMessage.warning("请先保存简历");
+    return;
+  }
+  await setDefaultResume(resumeId.value);
+  ElMessage.success("已设为默认简历");
+}
+
+async function saveResumePrivacy() {
+  if (!resumeId.value) {
+    return;
+  }
+  await updateResumePrivacy(resumeId.value, { privacy: resumeForm.privacy });
+  ElMessage.success("隐私设置已更新");
+}
+
+async function removeResume() {
+  if (!resumeId.value) {
+    ElMessage.warning("暂无可删除简历");
+    return;
+  }
+  await deleteResume(resumeId.value);
+  resumeId.value = null;
+  attachmentList.value = [];
+  ElMessage.success("简历已删除");
+}
+
+async function uploadResumeAttachmentRequest(option: UploadRequestOptions) {
+  if (!resumeId.value) {
+    ElMessage.warning("请先保存简历后再上传附件");
+    return;
+  }
+  const upload = await uploadCommonFile(
+    option.file as File,
+    "RESUME_ATTACHMENT"
+  );
+  await addResumeAttachment(resumeId.value, {
+    fileId: upload.fileId,
+    fileName: (option.file as File).name,
+  });
+  ElMessage.success("附件上传成功");
+  await loadResume();
+}
+
+async function removeAttachment(attachmentId: number) {
+  if (!resumeId.value) {
+    return;
+  }
+  await deleteResumeAttachment(resumeId.value, attachmentId);
+  ElMessage.success("附件已删除");
+  await loadResume();
+}
+
 async function readAllMessages() {
   await markMessagesRead();
   ElMessage.success("消息已全部标记已读");
   await loadMessages();
+}
+
+async function openMessage(messageId: number) {
+  const data = await getMessageDetail(messageId);
+  currentMessage.value = data;
+  messageVisible.value = true;
+  await refreshUnreadCount();
+  await loadMessages();
+}
+
+async function removeMessage(messageId: number) {
+  await deleteMessages({ messageIds: [messageId] });
+  ElMessage.success("消息已删除");
+  await loadMessages();
+  await refreshUnreadCount();
+}
+
+async function refreshUnreadCount() {
+  const data = await getUnreadMessageCount();
+  unreadCount.value = data.total || 0;
 }
 
 function logout() {
@@ -392,6 +607,8 @@ onMounted(async () => {
     loadResume(),
     loadApplies(),
     loadMessages(),
+    refreshUnreadCount(),
+    loadFavoriteJobs(),
     loadStatistics(),
   ]);
 });
@@ -468,5 +685,30 @@ onMounted(async () => {
 
 .trend-table {
   margin-top: 16px;
+}
+
+.attachment-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attachment-item,
+.message-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.attachment-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.badge-text {
+  color: #6b7280;
+  font-size: 13px;
 }
 </style>

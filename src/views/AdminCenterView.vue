@@ -131,13 +131,13 @@
               <el-button
                 text
                 type="success"
-                @click="handleJobAudit(row.jobId, 'PASS')"
+                @click="runSafely(() => handleJobAudit(row.jobId, 'PASS'))"
                 >通过</el-button
               >
               <el-button
                 text
                 type="danger"
-                @click="handleJobAudit(row.jobId, 'REJECT')"
+                @click="runSafely(() => handleJobAudit(row.jobId, 'REJECT'))"
                 >驳回</el-button
               >
             </template>
@@ -174,7 +174,7 @@
                     :rows="5"
                   />
                 </el-form-item>
-                <el-button type="primary" @click="saveNotice"
+                <el-button type="primary" @click="runSafely(saveNotice)"
                   >保存公告</el-button
                 >
               </el-form>
@@ -192,13 +192,19 @@
                     <el-button
                       text
                       type="success"
-                      @click="handleNoticeAudit(row.noticeId, 'PASS')"
+                      @click="
+                        runSafely(() => handleNoticeAudit(row.noticeId, 'PASS'))
+                      "
                       >通过</el-button
                     >
                     <el-button
                       text
                       type="danger"
-                      @click="handleNoticeAudit(row.noticeId, 'REJECT')"
+                      @click="
+                        runSafely(() =>
+                          handleNoticeAudit(row.noticeId, 'REJECT')
+                        )
+                      "
                       >驳回</el-button
                     >
                     <el-button
@@ -219,7 +225,9 @@
         <div class="toolbar">
           <el-input v-model="categoryForm.name" placeholder="分类名称" />
           <el-input-number v-model="categoryForm.sort" :min="0" />
-          <el-button type="primary" @click="saveCategory">新增分类</el-button>
+          <el-button type="primary" @click="runSafely(saveCategory)"
+            >新增分类</el-button
+          >
         </div>
         <el-table :data="categories" stripe>
           <el-table-column prop="categoryId" label="ID" width="100" />
@@ -272,7 +280,7 @@
                     {{ bannerPreview }}
                   </p>
                 </el-form-item>
-                <el-button type="primary" @click="saveBanner"
+                <el-button type="primary" @click="runSafely(saveBanner)"
                   >保存轮播图</el-button
                 >
               </el-form>
@@ -340,7 +348,9 @@
                     :rows="3"
                   />
                 </el-form-item>
-                <el-button type="primary" @click="saveRole">保存角色</el-button>
+                <el-button type="primary" @click="runSafely(saveRole)"
+                  >保存角色</el-button
+                >
               </el-form>
             </el-card>
           </el-col>
@@ -407,7 +417,10 @@
                   <el-option label="DISABLED" value="DISABLED" />
                 </el-select>
               </el-form-item>
-              <el-button type="primary" @click="saveMessageTemplate(template)">
+              <el-button
+                type="primary"
+                @click="runSafely(() => saveMessageTemplate(template))"
+              >
                 保存模板
               </el-button>
             </el-form>
@@ -652,6 +665,14 @@ const platformStats = reactive({
   employmentByArea: [] as Array<Record<string, unknown>>,
   industryDistribution: [] as Array<Record<string, unknown>>,
 });
+
+async function runSafely(task: () => Promise<void>) {
+  try {
+    await task();
+  } catch (error) {
+    ElMessage.error((error as { message?: string })?.message || "操作失败");
+  }
+}
 
 const candidateQuery = reactive({
   keyword: "",

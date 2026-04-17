@@ -94,12 +94,54 @@ export function getResumeDetail(resumeId: number) {
   return http.get(`/resume/${resumeId}`);
 }
 
+export function deleteResume(resumeId: number) {
+  return http.delete(`/resume/${resumeId}`);
+}
+
+export function setDefaultResume(resumeId: number) {
+  return http.put(`/resume/${resumeId}/default`);
+}
+
+export function updateResumePrivacy(
+  resumeId: number,
+  payload: Record<string, unknown>
+) {
+  return http.put(`/resume/${resumeId}/privacy`, payload);
+}
+
 export function exportResumePdf(resumeId: number) {
   return http.get(`/resume/${resumeId}/export/pdf`);
 }
 
+export function addResumeAttachment(
+  resumeId: number,
+  payload: Record<string, unknown>
+) {
+  return http.post(`/resume/${resumeId}/attachment`, payload);
+}
+
+export function deleteResumeAttachment(resumeId: number, attachmentId: number) {
+  return http.delete(`/resume/${resumeId}/attachment/${attachmentId}`);
+}
+
 export function applyJob(payload: Record<string, unknown>) {
   return http.post("/apply", payload);
+}
+
+export function batchApplyJobs(payload: Record<string, unknown>) {
+  return http.post("/apply/batch", payload);
+}
+
+export function collectJob(jobId: number) {
+  return http.post(`/jobs/${jobId}/favorite`);
+}
+
+export function uncollectJob(jobId: number) {
+  return http.delete(`/jobs/${jobId}/favorite`);
+}
+
+export function listCollectedJobs(params: Record<string, unknown>) {
+  return http.get("/jobs/favorites", { params });
 }
 
 export function listMyApplies(params: Record<string, unknown>) {
@@ -110,8 +152,20 @@ export function listMessages(params: Record<string, unknown>) {
   return http.get("/messages", { params });
 }
 
+export function getMessageDetail(messageId: number) {
+  return http.get(`/messages/${messageId}`);
+}
+
 export function markMessagesRead(payload?: Record<string, unknown>) {
   return http.put("/messages/read", payload || {});
+}
+
+export function deleteMessages(payload: Record<string, unknown>) {
+  return http.delete("/messages", { data: payload });
+}
+
+export function getUnreadMessageCount() {
+  return http.get("/messages/unread/count");
 }
 
 export function getEnterpriseInfo() {
@@ -164,8 +218,28 @@ export function updateEnterpriseJob(
   return http.put(`/enterprise/jobs/${jobId}`, payload);
 }
 
+export function offlineEnterpriseJob(jobId: number) {
+  return http.put(`/enterprise/jobs/${jobId}/offline`);
+}
+
+export function refreshEnterpriseJob(jobId: number) {
+  return http.put(`/enterprise/jobs/${jobId}/refresh`);
+}
+
+export function deleteEnterpriseJob(jobId: number) {
+  return http.delete(`/enterprise/jobs/${jobId}`);
+}
+
 export function listEnterpriseJobs(params: Record<string, unknown>) {
   return http.get("/enterprise/jobs", { params });
+}
+
+export function previewEnterpriseJob(jobId: number) {
+  return http.get(`/enterprise/jobs/${jobId}/preview`);
+}
+
+export function shareEnterpriseJob(jobId: number) {
+  return http.get(`/enterprise/jobs/${jobId}/share`);
 }
 
 export function listEnterpriseApplies(params: Record<string, unknown>) {
@@ -177,6 +251,32 @@ export function updateEnterpriseApplyStatus(
   payload: Record<string, unknown>
 ) {
   return http.put(`/enterprise/applies/${applyId}/status`, payload);
+}
+
+export function batchUpdateEnterpriseApplyStatus(
+  payload: Record<string, unknown>
+) {
+  return http.put("/enterprise/applies/status/batch", payload);
+}
+
+export function createEnterpriseInterview(payload: Record<string, unknown>) {
+  return http.post("/enterprise/interviews", payload);
+}
+
+export function listEnterpriseInterviews(params: Record<string, unknown>) {
+  return http.get("/enterprise/interviews", { params });
+}
+
+export function searchEnterpriseTalents(params: Record<string, unknown>) {
+  return http.get("/enterprise/talents/search", { params });
+}
+
+export function getEnterpriseTalentDetail(resumeId: number) {
+  return http.get(`/enterprise/talents/${resumeId}`);
+}
+
+export function contactEnterpriseTalent(payload: Record<string, unknown>) {
+  return http.post("/enterprise/talents/contact", payload);
 }
 
 export function getEnterpriseResumeDetail(resumeId: number) {

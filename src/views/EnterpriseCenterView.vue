@@ -164,6 +164,12 @@
             </div>
           </template>
           <el-alert
+            title="职位发布后会先进入待审核，只有管理员审核通过并处于招聘中状态，首页才会显示。"
+            type="info"
+            :closable="false"
+            class="auth-alert"
+          />
+          <el-alert
             v-if="enterprise.authStatus !== 'PASS'"
             title="企业认证通过后才能发布职位"
             type="warning"
@@ -281,6 +287,23 @@
             <el-table-column prop="status" label="状态" width="120" />
             <el-table-column prop="applyCount" label="投递数" width="100" />
             <el-table-column prop="publishTime" label="发布时间" />
+            <el-table-column label="操作" width="280">
+              <template #default="{ row }">
+                <el-button text type="primary" @click="previewJob(row.jobId)">
+                  预览
+                </el-button>
+                <el-button text type="success" @click="refreshJob(row.jobId)">
+                  刷新
+                </el-button>
+                <el-button text @click="shareJob(row.jobId)">分享</el-button>
+                <el-button text type="warning" @click="offlineJob(row.jobId)">
+                  下架
+                </el-button>
+                <el-button text type="danger" @click="removeJob(row.jobId)">
+                  删除
+                </el-button>
+              </template>
+            </el-table-column>
           </el-table>
         </el-card>
       </el-col>
@@ -302,11 +325,70 @@
                   @click="handleStatus(row.applyId, 'SUITABLE')"
                   >通过</el-button
                 >
+                <el-button text type="primary" @click="openInterviewDialog(row)"
+                  >邀约</el-button
+                >
                 <el-button
                   text
                   type="danger"
                   @click="handleStatus(row.applyId, 'UNSUITABLE')"
                   >淘汰</el-button
+                >
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="16" class="section-gap">
+      <el-col :span="24">
+        <el-card shadow="hover">
+          <template #header>面试邀约记录</template>
+          <el-table :data="interviews" stripe>
+            <el-table-column prop="candidateName" label="候选人" />
+            <el-table-column prop="jobName" label="职位" />
+            <el-table-column prop="interviewTime" label="面试时间" />
+            <el-table-column prop="interviewType" label="形式" width="120" />
+            <el-table-column prop="status" label="状态" width="120" />
+          </el-table>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="16" class="section-gap">
+      <el-col :span="24">
+        <el-card shadow="hover">
+          <template #header>人才搜索</template>
+          <div class="toolbar">
+            <el-input
+              v-model="talentFilters.keyword"
+              placeholder="关键词/技能/自我评价"
+            />
+            <el-input v-model="talentFilters.major" placeholder="专业" />
+            <el-input
+              v-model="talentFilters.expectCity"
+              placeholder="期望城市"
+            />
+            <el-button type="primary" @click="loadTalents">搜索人才</el-button>
+          </div>
+          <el-table :data="talents" stripe>
+            <el-table-column prop="candidateName" label="候选人" />
+            <el-table-column prop="expectPosition" label="期望职位" />
+            <el-table-column prop="expectCity" label="期望城市" />
+            <el-table-column prop="education" label="学历" width="120" />
+            <el-table-column prop="school" label="学校" />
+            <el-table-column prop="major" label="专业" />
+            <el-table-column label="操作" width="180">
+              <template #default="{ row }">
+                <el-button text type="primary" @click="openTalent(row.resumeId)"
+                  >查看</el-button
+                >
+                <el-button
+                  text
+                  type="success"
+                  @click="openTalentContact(row.resumeId)"
+                  >沟通</el-button
                 >
               </template>
             </el-table-column>
@@ -344,6 +426,83 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="interviewVisible" title="发送面试邀约" width="620px">
+      <el-form label-position="top" :model="interviewForm">
+        <el-form-item label="面试时间">
+          <el-input
+            v-model="interviewForm.interviewTime"
+            placeholder="2026-04-20 14:00:00"
+          />
+        </el-form-item>
+        <el-form-item label="面试形式">
+          <el-select v-model="interviewForm.interviewType">
+            <el-option label="线上" value="ONLINE" />
+            <el-option label="线下" value="OFFLINE" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="面试地点">
+          <el-input v-model="interviewForm.interviewPlace" />
+        </el-form-item>
+        <el-form-item label="会议链接">
+          <el-input v-model="interviewForm.interviewLink" />
+        </el-form-item>
+        <el-form-item label="联系人">
+          <el-input v-model="interviewForm.contactName" />
+        </el-form-item>
+        <el-form-item label="联系电话">
+          <el-input v-model="interviewForm.contactMobile" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="interviewForm.remark" type="textarea" :rows="3" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="interviewVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitInterview">发送邀约</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="talentVisible" title="人才详情" width="760px">
+      <div v-if="talentDetail" class="detail-box">
+        <h4>基础信息</h4>
+        <pre>{{ JSON.stringify(talentDetail.basicInfo, null, 2) }}</pre>
+        <h4>求职意向</h4>
+        <pre>{{ JSON.stringify(talentDetail.jobIntention, null, 2) }}</pre>
+        <h4>教育经历</h4>
+        <pre>{{ JSON.stringify(talentDetail.educationList, null, 2) }}</pre>
+        <h4>技能标签</h4>
+        <pre>{{ JSON.stringify(talentDetail.skillList, null, 2) }}</pre>
+      </div>
+    </el-dialog>
+
+    <el-dialog v-model="talentContactVisible" title="主动沟通" width="560px">
+      <el-form label-position="top" :model="talentContactForm">
+        <el-form-item label="推荐职位">
+          <el-select v-model="talentContactForm.jobId">
+            <el-option
+              v-for="job in jobs"
+              :key="job.jobId"
+              :label="job.jobName"
+              :value="job.jobId"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="沟通内容">
+          <el-input
+            v-model="talentContactForm.message"
+            type="textarea"
+            :rows="4"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="talentContactVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitTalentContact"
+          >发送沟通</el-button
+        >
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -352,16 +511,26 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, UploadRequestOptions } from "element-plus";
 import { useRouter } from "vue-router";
 import {
+  contactEnterpriseTalent,
+  createEnterpriseInterview,
   createEnterpriseJob,
+  deleteEnterpriseJob,
   downloadGeneratedFile,
   exportEnterpriseResumePdf,
   exportStatistics,
+  listEnterpriseInterviews,
+  previewEnterpriseJob,
+  refreshEnterpriseJob,
+  shareEnterpriseJob,
   getEnterpriseAuthStatus,
   getEnterpriseInfo,
   getEnterpriseResumeDetail,
   getEnterpriseStatistics,
   listEnterpriseApplies,
   listEnterpriseJobs,
+  offlineEnterpriseJob,
+  searchEnterpriseTalents,
+  getEnterpriseTalentDetail,
   submitEnterpriseAuth,
   uploadCommonFile,
   updateEnterpriseApplyStatus,
@@ -400,6 +569,25 @@ interface EnterpriseApplyRecord {
   candidateName: string;
   jobName: string;
   status: string;
+}
+
+interface InterviewRecord {
+  interviewId: number;
+  candidateName: string;
+  jobName: string;
+  interviewTime: string;
+  interviewType: string;
+  status: string;
+}
+
+interface TalentRecord {
+  resumeId: number;
+  candidateName: string;
+  expectPosition: string;
+  expectCity: string;
+  education: string;
+  school: string;
+  major: string;
 }
 
 interface ResumeDetail {
@@ -456,8 +644,16 @@ const statistics = reactive({
 });
 const jobs = ref<EnterpriseJobRecord[]>([]);
 const applications = ref<EnterpriseApplyRecord[]>([]);
+const interviews = ref<InterviewRecord[]>([]);
+const talents = ref<TalentRecord[]>([]);
 const resumeVisible = ref(false);
+const interviewVisible = ref(false);
+const talentVisible = ref(false);
+const talentContactVisible = ref(false);
+const currentApplyId = ref<number | null>(null);
+const currentTalentResumeId = ref<number | null>(null);
 const resumeDetail = ref<ResumeDetail | null>(null);
+const talentDetail = ref<Record<string, unknown> | null>(null);
 const jobForm = reactive<EnterpriseJobForm>({
   jobName: "Java开发工程师",
   jobCategory: "后端开发",
@@ -472,6 +668,24 @@ const jobForm = reactive<EnterpriseJobForm>({
   welfare: ["双休", "五险一金"],
   contactName: "HR 李老师",
   contactMobile: "13900000000",
+});
+const interviewForm = reactive({
+  interviewTime: "2026-04-20 14:00:00",
+  interviewType: "OFFLINE",
+  interviewPlace: "成都市高新区天府软件园",
+  interviewLink: "",
+  contactName: "HR 李老师",
+  contactMobile: "13900000000",
+  remark: "请提前 10 分钟到场",
+});
+const talentFilters = reactive({
+  keyword: "",
+  major: "",
+  expectCity: "",
+});
+const talentContactForm = reactive({
+  jobId: 0,
+  message: "您好，我们对您的背景很感兴趣，想进一步沟通岗位机会。",
 });
 
 async function loadEnterpriseInfo() {
@@ -525,7 +739,7 @@ async function saveJob() {
     return;
   }
   await createEnterpriseJob(jobForm);
-  ElMessage.success("职位已发布");
+  ElMessage.success("职位已发布，管理员审核通过后会显示在首页");
   await loadJobs();
 }
 
@@ -570,9 +784,52 @@ async function loadJobs() {
   jobs.value = data.list || [];
 }
 
+async function previewJob(jobId: number) {
+  const data = await previewEnterpriseJob(jobId);
+  ElMessage.info(`预览职位：${data.jobName}`);
+}
+
+async function refreshJob(jobId: number) {
+  await refreshEnterpriseJob(jobId);
+  ElMessage.success("职位已刷新");
+  await loadJobs();
+}
+
+async function shareJob(jobId: number) {
+  const data = await shareEnterpriseJob(jobId);
+  await navigator.clipboard.writeText(window.location.origin + data.shareUrl);
+  ElMessage.success("职位分享链接已复制");
+}
+
+async function offlineJob(jobId: number) {
+  await offlineEnterpriseJob(jobId);
+  ElMessage.success("职位已下架");
+  await loadJobs();
+}
+
+async function removeJob(jobId: number) {
+  await deleteEnterpriseJob(jobId);
+  ElMessage.success("职位已删除");
+  await loadJobs();
+}
+
 async function loadApplications() {
   const data = await listEnterpriseApplies({ pageNum: 1, pageSize: 10 });
   applications.value = data.list || [];
+}
+
+async function loadInterviews() {
+  const data = await listEnterpriseInterviews({ pageNum: 1, pageSize: 10 });
+  interviews.value = data.list || [];
+}
+
+async function loadTalents() {
+  const data = await searchEnterpriseTalents({
+    pageNum: 1,
+    pageSize: 10,
+    ...talentFilters,
+  });
+  talents.value = data.list || [];
 }
 
 async function handleStatus(applyId: number, status: string) {
@@ -585,6 +842,51 @@ async function handleStatus(applyId: number, status: string) {
   });
   ElMessage.success("投递状态已更新");
   await loadApplications();
+}
+
+function openInterviewDialog(row: EnterpriseApplyRecord) {
+  currentApplyId.value = row.applyId;
+  interviewVisible.value = true;
+}
+
+async function submitInterview() {
+  if (!currentApplyId.value) {
+    ElMessage.warning("请先选择投递记录");
+    return;
+  }
+  await createEnterpriseInterview({
+    applyId: currentApplyId.value,
+    ...interviewForm,
+  });
+  interviewVisible.value = false;
+  currentApplyId.value = null;
+  ElMessage.success("面试邀约已发送");
+  await Promise.all([loadApplications(), loadInterviews(), loadStatistics()]);
+}
+
+async function openTalent(resumeId: number) {
+  talentDetail.value = await getEnterpriseTalentDetail(resumeId);
+  talentVisible.value = true;
+}
+
+function openTalentContact(resumeId: number) {
+  currentTalentResumeId.value = resumeId;
+  talentContactForm.jobId = jobs.value[0]?.jobId || 0;
+  talentContactVisible.value = true;
+}
+
+async function submitTalentContact() {
+  if (!currentTalentResumeId.value || !talentContactForm.jobId) {
+    ElMessage.warning("请先选择人才和推荐职位");
+    return;
+  }
+  await contactEnterpriseTalent({
+    resumeId: currentTalentResumeId.value,
+    jobId: talentContactForm.jobId,
+    message: talentContactForm.message,
+  });
+  talentContactVisible.value = false;
+  ElMessage.success("沟通消息已发送");
 }
 
 async function openResume(resumeId: number) {
@@ -612,6 +914,8 @@ onMounted(async () => {
     loadEnterpriseInfo(),
     loadJobs(),
     loadApplications(),
+    loadInterviews(),
+    loadTalents(),
     loadStatistics(),
   ]);
 });
