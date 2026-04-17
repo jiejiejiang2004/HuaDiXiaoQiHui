@@ -1,0 +1,107 @@
+CREATE DATABASE IF NOT EXISTS xiaoqihui DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE xiaoqihui;
+
+CREATE TABLE IF NOT EXISTS sys_user (
+  user_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  mobile VARCHAR(20) NOT NULL UNIQUE,
+  password VARCHAR(100) NOT NULL,
+  real_name VARCHAR(50) NOT NULL,
+  email VARCHAR(100) NULL,
+  avatar VARCHAR(255) NULL,
+  identity_type VARCHAR(20) NOT NULL,
+  user_type VARCHAR(20) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  current_city VARCHAR(100) NULL,
+  school VARCHAR(100) NULL,
+  major VARCHAR(100) NULL,
+  graduation_year INT NULL,
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS company_info (
+  enterprise_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT NOT NULL UNIQUE,
+  company_name VARCHAR(100) NOT NULL,
+  industry VARCHAR(50) NULL,
+  scale VARCHAR(30) NULL,
+  address VARCHAR(255) NULL,
+  introduction TEXT NULL,
+  website VARCHAR(255) NULL,
+  logo VARCHAR(255) NULL,
+  auth_status VARCHAR(20) NOT NULL DEFAULT 'PASS',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_company_user FOREIGN KEY (user_id) REFERENCES sys_user(user_id)
+);
+
+CREATE TABLE IF NOT EXISTS resume (
+  resume_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  title VARCHAR(100) NOT NULL,
+  basic_info JSON NOT NULL,
+  job_intention JSON NOT NULL,
+  education_list JSON NOT NULL,
+  work_list JSON NULL,
+  skill_list JSON NULL,
+  self_evaluation TEXT NULL,
+  privacy VARCHAR(20) NOT NULL DEFAULT 'ENTERPRISE_ONLY',
+  is_default TINYINT(1) NOT NULL DEFAULT 0,
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_resume_user FOREIGN KEY (user_id) REFERENCES sys_user(user_id)
+);
+
+CREATE TABLE IF NOT EXISTS job_position (
+  job_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  enterprise_id BIGINT NOT NULL,
+  job_name VARCHAR(100) NOT NULL,
+  job_category VARCHAR(50) NOT NULL,
+  responsibility TEXT NOT NULL,
+  requirement_text TEXT NOT NULL,
+  salary_min INT NOT NULL,
+  salary_max INT NOT NULL,
+  location VARCHAR(100) NOT NULL,
+  head_count INT NOT NULL,
+  education VARCHAR(20) NOT NULL,
+  experience VARCHAR(20) NOT NULL,
+  welfare JSON NULL,
+  contact_name VARCHAR(50) NOT NULL,
+  contact_mobile VARCHAR(20) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'RECRUITING',
+  publish_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  refresh_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_job_enterprise FOREIGN KEY (enterprise_id) REFERENCES company_info(enterprise_id)
+);
+
+CREATE TABLE IF NOT EXISTS job_application (
+  apply_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  job_id BIGINT NOT NULL,
+  resume_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  enterprise_id BIGINT NOT NULL,
+  cover_letter VARCHAR(500) NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  apply_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_job_user (job_id, user_id),
+  CONSTRAINT fk_apply_job FOREIGN KEY (job_id) REFERENCES job_position(job_id),
+  CONSTRAINT fk_apply_resume FOREIGN KEY (resume_id) REFERENCES resume(resume_id),
+  CONSTRAINT fk_apply_user FOREIGN KEY (user_id) REFERENCES sys_user(user_id),
+  CONSTRAINT fk_apply_enterprise FOREIGN KEY (enterprise_id) REFERENCES company_info(enterprise_id)
+);
+
+CREATE TABLE IF NOT EXISTS job_message (
+  message_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  type VARCHAR(20) NOT NULL,
+  title VARCHAR(100) NOT NULL,
+  content TEXT NOT NULL,
+  biz_id BIGINT NULL,
+  read_status VARCHAR(20) NOT NULL DEFAULT 'UNREAD',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  read_time DATETIME NULL,
+  CONSTRAINT fk_message_user FOREIGN KEY (user_id) REFERENCES sys_user(user_id)
+);
