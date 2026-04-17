@@ -1,4 +1,4 @@
-export type UserType = "CANDIDATE" | "ENTERPRISE" | "";
+export type UserType = "CANDIDATE" | "ENTERPRISE" | "ADMIN" | "";
 
 const ACCESS_TOKEN_KEY = "xqh_access_token";
 const USER_TYPE_KEY = "xqh_user_type";

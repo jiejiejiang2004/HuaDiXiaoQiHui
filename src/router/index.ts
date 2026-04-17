@@ -9,6 +9,7 @@ import HomeView from "../views/HomeView.vue";
 import LoginView from "../views/LoginView.vue";
 import CandidateCenterView from "../views/CandidateCenterView.vue";
 import EnterpriseCenterView from "../views/EnterpriseCenterView.vue";
+import AdminCenterView from "../views/AdminCenterView.vue";
 import { getAccessToken, getUserType } from "@/utils/auth";
 
 const routes: Array<RouteRecordRaw> = [
@@ -40,6 +41,15 @@ const routes: Array<RouteRecordRaw> = [
       userType: "ENTERPRISE",
     },
   },
+  {
+    path: "/admin",
+    name: "admin",
+    component: AdminCenterView,
+    meta: {
+      requiresAuth: true,
+      userType: "ADMIN",
+    },
+  },
 ];
 
 const router = createRouter({
@@ -67,6 +77,8 @@ router.beforeEach(
           ? "/enterprise"
           : userType === "CANDIDATE"
           ? "/candidate"
+          : userType === "ADMIN"
+          ? "/admin"
           : "/login"
       );
       return;

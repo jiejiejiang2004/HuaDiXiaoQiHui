@@ -12,6 +12,10 @@ export function enterpriseRegister(payload: Record<string, unknown>) {
   return http.post("/enterprise/register", payload);
 }
 
+export function adminLogin(payload: Record<string, unknown>) {
+  return http.post("/admin/login", payload);
+}
+
 export function enterpriseLogin(payload: Record<string, unknown>) {
   return http.post("/enterprise/login", payload);
 }
@@ -103,4 +107,91 @@ export function updateEnterpriseApplyStatus(
 
 export function getEnterpriseResumeDetail(resumeId: number) {
   return http.get(`/enterprise/resumes/${resumeId}`);
+}
+
+export function listCandidates(params: Record<string, unknown>) {
+  return http.get("/admin/users/candidates", { params });
+}
+
+export function getCandidateDetail(userId: number) {
+  return http.get(`/admin/users/candidates/${userId}`);
+}
+
+export function updateCandidateStatus(
+  userId: number,
+  payload: Record<string, unknown>
+) {
+  return http.put(`/admin/users/candidates/${userId}/status`, payload);
+}
+
+export function listEnterprisesAdmin(params: Record<string, unknown>) {
+  return http.get("/admin/users/enterprises", { params });
+}
+
+export function auditEnterprise(
+  enterpriseId: number,
+  payload: Record<string, unknown>
+) {
+  return http.put(`/admin/users/enterprises/${enterpriseId}/audit`, payload);
+}
+
+export function updateEnterpriseStatusAdmin(
+  enterpriseId: number,
+  payload: Record<string, unknown>
+) {
+  return http.put(`/admin/users/enterprises/${enterpriseId}/status`, payload);
+}
+
+export function listAuditJobs(params: Record<string, unknown>) {
+  return http.get("/admin/audit/jobs", { params });
+}
+
+export function auditJob(jobId: number, payload: Record<string, unknown>) {
+  return http.put(`/admin/audit/jobs/${jobId}`, payload);
+}
+
+export function listAuditNotices(params: Record<string, unknown>) {
+  return http.get("/admin/audit/notices", { params });
+}
+
+export function auditNotice(
+  noticeId: number,
+  payload: Record<string, unknown>
+) {
+  return http.put(`/admin/audit/notices/${noticeId}`, payload);
+}
+
+export function listCategoriesAdmin(params?: Record<string, unknown>) {
+  return http.get("/admin/system/categories", { params });
+}
+
+export function createCategoryAdmin(payload: Record<string, unknown>) {
+  return http.post("/admin/system/categories", payload);
+}
+
+export function updateCategoryAdmin(
+  categoryId: number,
+  payload: Record<string, unknown>
+) {
+  return http.put(`/admin/system/categories/${categoryId}`, payload);
+}
+
+export function deleteCategoryAdmin(categoryId: number) {
+  return http.delete(`/admin/system/categories/${categoryId}`);
+}
+
+export function listSystemNotices(params: Record<string, unknown>) {
+  return http.get("/admin/system/notices", { params });
+}
+
+export function createSystemNotice(payload: Record<string, unknown>) {
+  return http.post("/admin/system/notices", payload);
+}
+
+export function deleteSystemNotice(noticeId: number) {
+  return http.delete(`/admin/system/notices/${noticeId}`);
+}
+
+export function listAuditLogs(params: Record<string, unknown>) {
+  return http.get("/admin/system/logs/audit", { params });
 }

@@ -5,7 +5,7 @@
         <div class="card-header">
           <div>
             <h2>校企慧统一登录</h2>
-            <p>个人求职者与企业用户共用入口</p>
+            <p>个人求职者、企业用户与管理员共用入口</p>
           </div>
           <el-button text @click="$router.push('/')">返回首页</el-button>
         </div>
@@ -65,6 +65,29 @@
             </div>
           </el-form>
         </el-tab-pane>
+
+        <el-tab-pane label="管理员" name="admin">
+          <el-form label-position="top" :model="adminForm">
+            <el-form-item label="手机号">
+              <el-input v-model="adminForm.mobile" />
+            </el-form-item>
+            <el-form-item label="密码">
+              <el-input
+                v-model="adminForm.password"
+                type="password"
+                show-password
+              />
+            </el-form-item>
+            <div class="action-row">
+              <el-button
+                type="primary"
+                :loading="adminLoading"
+                @click="handleAdminLogin"
+                >登录后台</el-button
+              >
+            </div>
+          </el-form>
+        </el-tab-pane>
       </el-tabs>
     </el-card>
   </div>
@@ -75,6 +98,7 @@ import { reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import {
+  adminLogin,
   candidateLogin,
   candidateRegister,
   enterpriseLogin,
@@ -87,6 +111,7 @@ const router = useRouter();
 const activeTab = ref((route.query.tab as string) || "candidate");
 const candidateLoading = ref(false);
 const enterpriseLoading = ref(false);
+const adminLoading = ref(false);
 
 const candidateForm = reactive({
   mobile: "13812345678",
@@ -97,6 +122,11 @@ const enterpriseForm = reactive({
   mobile: "13912345678",
   password: "Abc@123456",
   companyName: "成都校企科技有限公司",
+});
+
+const adminForm = reactive({
+  mobile: "18800000000",
+  password: "Admin@123456",
 });
 
 async function handleCandidateLogin() {
@@ -167,6 +197,20 @@ async function handleEnterpriseRegister() {
     router.push("/enterprise");
   } finally {
     enterpriseLoading.value = false;
+  }
+}
+
+async function handleAdminLogin() {
+  adminLoading.value = true;
+  try {
+    const data = await adminLogin(adminForm);
+    setAccessToken(data.accessToken);
+    setUserType("ADMIN");
+    setUserName(data.userName || "平台管理员");
+    ElMessage.success("管理员登录成功");
+    router.push("/admin");
+  } finally {
+    adminLoading.value = false;
   }
 }
 </script>
