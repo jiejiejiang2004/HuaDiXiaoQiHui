@@ -124,10 +124,11 @@ watch(
   margin: 0 auto;
   padding: 0 24px;
   display: flex;
+  flex-wrap: nowrap;
   align-items: stretch;
   justify-content: space-between;
-  gap: 24px;
-  min-height: 56px;
+  gap: 12px;
+  min-height: 52px;
 }
 
 .swan-top-nav__brand {
@@ -158,16 +159,20 @@ watch(
 .swan-top-nav__links {
   display: flex;
   align-items: stretch;
-  gap: 4px;
+  flex-wrap: nowrap;
+  gap: 2px;
   margin-left: auto;
+  flex-shrink: 0;
+  align-self: stretch;
 }
 
 .swan-top-nav__link {
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   align-self: stretch;
-  padding: 0 18px;
+  padding: 0 12px;
+  white-space: nowrap;
   text-decoration: none;
   color: var(--jp-nav-text, #5e6670);
   font-size: 0.9375rem;
@@ -187,8 +192,8 @@ watch(
 .swan-top-nav__link--active::after {
   content: "";
   position: absolute;
-  left: 10px;
-  right: 10px;
+  left: 0;
+  right: 0;
   bottom: 0;
   height: var(--jp-nav-underline, 3px);
   border-radius: var(--jb-radius-sm, 4px) var(--jb-radius-sm, 4px) 0 0;
@@ -196,21 +201,40 @@ watch(
   pointer-events: none;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .swan-top-nav__inner {
-    flex-wrap: wrap;
-    padding: 10px 16px 12px;
+    padding: 0 16px;
+    gap: 8px;
+    min-height: 48px;
   }
 
-  .swan-top-nav__links {
-    width: 100%;
-    justify-content: flex-end;
-    border-top: 1px solid var(--jp-nav-border);
-    padding-top: 6px;
+  .swan-top-nav__mark {
+    font-size: 1.65rem;
+  }
+
+  .swan-top-nav__title {
+    font-size: 1.05rem;
   }
 
   .swan-top-nav__link {
-    padding: 10px 12px;
+    padding: 0 10px;
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .swan-top-nav__brand {
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .swan-top-nav__title {
+    display: none;
+  }
+
+  .swan-top-nav__link {
+    padding: 0 8px;
+    font-size: 0.8125rem;
   }
 }
 </style>
