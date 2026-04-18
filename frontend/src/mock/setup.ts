@@ -26,9 +26,12 @@ function normPath(config: AxiosRequestConfig): string {
 const collectedJobIds = new Set<number>();
 const favoritedResumeIds = new Set<number>([7001]);
 
+const MOCK_JOB_TYPES = ["全职", "兼职", "实习"] as const;
+
 function jobsWithCollectFlags() {
-  return D.MOCK_JOBS.map((j) => ({
+  return D.MOCK_JOBS.map((j, i) => ({
     ...j,
+    jobType: MOCK_JOB_TYPES[i % MOCK_JOB_TYPES.length],
     collected: collectedJobIds.has(j.jobId),
   }));
 }
@@ -89,6 +92,11 @@ function mockJobSearch(config: AxiosRequestConfig): {
   }
   if (location) {
     list = list.filter((j) => j.location.toLowerCase().includes(location));
+  }
+
+  const sortBy = getSearchParam(config, "sortBy");
+  if (sortBy === "recent") {
+    list = [...list].sort((a, b) => b.jobId - a.jobId);
   }
 
   const total = list.length;
@@ -182,6 +190,16 @@ export function setupMocks(api: AxiosInstance): void {
 
     if (method === "POST" && path === "/user/logout") {
       return ok(null);
+    }
+
+    if (method === "GET" && path === "/home/platform-brief") {
+      const enterpriseCount = new Set(D.MOCK_JOBS.map((j) => j.companyName))
+        .size;
+      return ok({
+        enterpriseCount,
+        jobCount: D.MOCK_JOBS.length,
+        candidateCount: 12847,
+      });
     }
 
     if (method === "GET" && path === "/jobs/search") {

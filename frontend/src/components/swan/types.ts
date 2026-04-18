@@ -6,6 +6,8 @@ export interface SwanJobSummary {
   companyName: string;
   salaryMin: number;
   salaryMax: number;
+  /** 全职 / 兼职 / 实习 等，用于卡片角标 */
+  jobType?: string;
   location: string;
   education: string;
   experience: string;

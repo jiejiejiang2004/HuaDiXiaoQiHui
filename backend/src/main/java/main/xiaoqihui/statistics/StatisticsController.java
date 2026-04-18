@@ -18,6 +18,11 @@ public class StatisticsController {
         this.statisticsService = statisticsService;
     }
 
+    @GetMapping("/home/platform-brief")
+    public ApiResponse<?> platformPublicBrief() {
+        return ApiResponse.success(statisticsService.platformPublicBrief());
+    }
+
     @GetMapping("/statistics/candidate")
     public ApiResponse<?> candidateStatistics() {
         return ApiResponse.success(statisticsService.candidateStatistics());

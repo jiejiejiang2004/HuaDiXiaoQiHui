@@ -69,6 +69,17 @@ public class StatisticsService {
         return data;
     }
 
+    /**
+     * 首页等匿名场景：仅返回企业数、岗位数、求职者数。
+     */
+    public Map<String, Object> platformPublicBrief() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("enterpriseCount", statisticsMapper.countTotalEnterprises());
+        data.put("jobCount", statisticsMapper.countTotalJobs());
+        data.put("candidateCount", statisticsMapper.countTotalCandidates());
+        return data;
+    }
+
     public Map<String, Object> platformOverviewStatistics() {
         requireRole("ADMIN");
         Map<String, Object> data = new LinkedHashMap<>();

@@ -2,9 +2,14 @@
   <header class="swan-top-nav">
     <div class="swan-top-nav__inner">
       <router-link to="/" class="swan-top-nav__brand" aria-label="校企慧首页">
-        <span class="swan-top-nav__mark" aria-hidden="true" />
+        <span
+          class="material-symbols-outlined swan-top-nav__mark"
+          aria-hidden="true"
+          >business_center</span
+        >
         <span class="swan-top-nav__title">校企慧</span>
       </router-link>
+
       <nav class="swan-top-nav__links" aria-label="主导航">
         <router-link
           to="/"
@@ -14,21 +19,20 @@
           首页
         </router-link>
         <router-link
-          :to="{ path: '/', hash: '#job-list' }"
+          to="/jobs"
           class="swan-top-nav__link"
           :class="{ 'swan-top-nav__link--active': isJobsActive }"
         >
           求职
         </router-link>
+        <router-link
+          :to="profileTarget"
+          class="swan-top-nav__link"
+          :class="{ 'swan-top-nav__link--active': isProfileActive }"
+        >
+          个人主页
+        </router-link>
       </nav>
-      <div class="swan-top-nav__actions">
-        <router-link v-if="!isAuthed" to="/login" class="swan-top-nav__auth"
-          >登录</router-link
-        >
-        <router-link v-else :to="dashboardPath" class="swan-top-nav__auth"
-          >我的主页</router-link
-        >
-      </div>
     </div>
   </header>
 </template>
@@ -49,14 +53,6 @@ function syncAuth() {
 
 const isAuthed = computed(() => Boolean(token.value));
 
-const isHomeActive = computed(
-  () => route.path === "/" && route.hash !== "#job-list"
-);
-
-const isJobsActive = computed(
-  () => route.path === "/" && route.hash === "#job-list"
-);
-
 const dashboardPath = computed(() => {
   switch (userType.value) {
     case "CANDIDATE":
@@ -68,6 +64,26 @@ const dashboardPath = computed(() => {
     default:
       return "/login";
   }
+});
+
+/** 未登录时个人主页进入登录页 */
+const profileTarget = computed(() =>
+  isAuthed.value ? dashboardPath.value : "/login"
+);
+
+const isHomeActive = computed(() => route.path === "/");
+
+const isJobsActive = computed(() => route.path === "/jobs");
+
+const isProfileActive = computed(() => {
+  if (!isAuthed.value) {
+    return route.path === "/login";
+  }
+  return (
+    route.path === "/candidate" ||
+    route.path === "/enterprise" ||
+    route.path === "/admin"
+  );
 });
 
 onMounted(() => {
@@ -99,10 +115,13 @@ watch(
   padding: 0 24px;
   display: flex;
   align-items: stretch;
+  justify-content: space-between;
+  gap: 24px;
   min-height: 56px;
 }
 
 .swan-top-nav__brand {
+  align-self: center;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -110,17 +129,16 @@ watch(
   color: var(--jb-text, #111827);
   font-weight: 800;
   letter-spacing: -0.02em;
-  margin-right: 40px;
   flex-shrink: 0;
 }
 
 .swan-top-nav__mark {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--jb-radius-sm, 4px);
-  background: linear-gradient(145deg, #0a65cc, #2563eb);
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--jb-primary, #0a65cc);
+  font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 48;
   flex-shrink: 0;
-  box-shadow: 0 1px 4px rgba(10, 101, 204, 0.22);
+  user-select: none;
 }
 
 .swan-top-nav__title {
@@ -131,14 +149,15 @@ watch(
   display: flex;
   align-items: stretch;
   gap: 4px;
-  flex: 1;
+  margin-left: auto;
 }
 
 .swan-top-nav__link {
   position: relative;
   display: inline-flex;
   align-items: center;
-  padding: 0 20px;
+  align-self: stretch;
+  padding: 0 18px;
   text-decoration: none;
   color: var(--jp-nav-text, #5e6670);
   font-size: 0.9375rem;
@@ -158,48 +177,30 @@ watch(
 .swan-top-nav__link--active::after {
   content: "";
   position: absolute;
-  left: 12px;
-  right: 12px;
+  left: 10px;
+  right: 10px;
   bottom: 0;
   height: var(--jp-nav-underline, 3px);
   border-radius: var(--jb-radius-sm, 4px) var(--jb-radius-sm, 4px) 0 0;
   background: var(--jp-nav-active, #0a65cc);
+  pointer-events: none;
 }
 
-.swan-top-nav__actions {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-}
-
-.swan-top-nav__auth {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--jp-nav-active, #0a65cc);
-  text-decoration: none;
-  padding: 8px 4px;
-}
-
-.swan-top-nav__auth:hover {
-  text-decoration: underline;
-}
-
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   .swan-top-nav__inner {
     flex-wrap: wrap;
-    padding: 8px 16px 12px;
-    gap: 8px;
+    padding: 10px 16px 12px;
   }
 
   .swan-top-nav__links {
-    order: 3;
     width: 100%;
+    justify-content: flex-end;
     border-top: 1px solid var(--jp-nav-border);
-    padding-top: 4px;
+    padding-top: 6px;
   }
 
   .swan-top-nav__link {
-    padding: 10px 14px;
+    padding: 10px 12px;
   }
 }
 </style>

@@ -6,6 +6,7 @@ import {
   RouteRecordRaw,
 } from "vue-router";
 import HomeView from "../views/HomeView.vue";
+import JobsView from "../views/JobsView.vue";
 import LoginView from "../views/LoginView.vue";
 import CandidateCenterView from "../views/CandidateCenterView.vue";
 import EnterpriseCenterView from "../views/EnterpriseCenterView.vue";
@@ -17,6 +18,11 @@ const routes: Array<RouteRecordRaw> = [
     path: "/",
     name: "home",
     component: HomeView,
+  },
+  {
+    path: "/jobs",
+    name: "jobs",
+    component: JobsView,
   },
   {
     path: "/login",

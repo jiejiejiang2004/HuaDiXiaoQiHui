@@ -2,39 +2,28 @@
   <div class="home-page">
     <SwanHeroSection
       :filters="filters"
-      :is-candidate="isCandidate"
-      :batch-disabled="selectedJobIds.length === 0"
+      :platform-brief="platformBrief"
+      :stats-loading="statsLoading"
       @update:filters="(p) => Object.assign(filters, p)"
-      @search="loadJobs"
-      @batch-apply="batchApplySelectedJobs"
-      @go-candidate="goLogin('candidate')"
-      @go-enterprise="goLogin('enterprise')"
+      @search="goJobsSearch"
     />
 
     <SwanJobListSection
+      heading="最新职位"
       :jobs="jobs"
       :loading="loading"
-      :total="total"
+      :total="0"
       :is-candidate="isCandidate"
-      :selected-job-ids="selectedJobIds"
-      section-id="job-list"
+      :selected-job-ids="[]"
+      layout="home-three-rows"
+      view-all-to="/jobs"
+      :show-summary="false"
+      section-id="recent-jobs"
       @open-detail="openDetail"
       @toggle-collect="toggleCollect"
-      @toggle-select="toggleSelectedJob"
     />
 
-    <el-empty v-if="!loading && !jobs.length" description="暂无匹配职位" />
-
-    <el-pagination
-      v-if="total > pageSize"
-      class="pager"
-      background
-      layout="prev, pager, next"
-      :total="total"
-      :page-size="pageSize"
-      :current-page="pageNum"
-      @current-change="handlePageChange"
-    />
+    <el-empty v-if="!loading && !jobs.length" description="暂无职位展示" />
 
     <el-dialog v-model="detailVisible" title="职位详情" width="720px">
       <template v-if="jobDetail">
@@ -72,47 +61,32 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
-import { useRoute, useRouter } from "vue-router";
+import { useRouter } from "vue-router";
 import SwanHeroSection from "@/components/swan/SwanHeroSection.vue";
 import SwanJobListSection from "@/components/swan/SwanJobListSection.vue";
 import type { SwanJobSummary } from "@/components/swan/types";
 import {
   applyJob,
-  batchApplyJobs,
   collectJob,
   getJobDetail,
+  getPlatformPublicBrief,
   listResumes,
   searchJobs,
   uncollectJob,
+  type PlatformPublicBrief,
 } from "@/api/recruit";
 import { getUserType } from "@/utils/auth";
 
 const router = useRouter();
-const route = useRoute();
-
-function scrollToJobListIfNeeded() {
-  if (route.hash !== "#job-list") {
-    return;
-  }
-  nextTick(() => {
-    document
-      .getElementById("job-list")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-}
-
-watch(() => route.hash, scrollToJobListIfNeeded);
 
 const loading = ref(false);
+const platformBrief = ref<PlatformPublicBrief | null>(null);
+const statsLoading = ref(true);
 const jobs = ref<SwanJobSummary[]>([]);
-const total = ref(0);
-const pageNum = ref(1);
-const pageSize = 10;
 const detailVisible = ref(false);
 const jobDetail = ref<SwanJobSummary | null>(null);
-const selectedJobIds = ref<number[]>([]);
 const isCandidate = computed(() => getUserType() === "CANDIDATE");
 const filters = reactive({
   keyword: "",
@@ -121,16 +95,44 @@ const filters = reactive({
   location: "",
 });
 
-async function loadJobs() {
+function goJobsSearch() {
+  const q: Record<string, string> = {};
+  if (filters.keyword.trim()) {
+    q.kw = filters.keyword.trim();
+  }
+  if (filters.location.trim()) {
+    q.city = filters.location.trim();
+  }
+  router.push({
+    path: "/jobs",
+    query: Object.keys(q).length ? q : {},
+  });
+}
+
+async function loadPlatformBrief() {
+  statsLoading.value = true;
+  try {
+    platformBrief.value = await getPlatformPublicBrief();
+  } catch {
+    platformBrief.value = null;
+  } finally {
+    statsLoading.value = false;
+  }
+}
+
+async function loadRecentJobs() {
   loading.value = true;
   try {
     const data = await searchJobs({
-      ...filters,
-      pageNum: pageNum.value,
-      pageSize,
+      keyword: "",
+      education: "",
+      experience: "",
+      location: "",
+      pageNum: 1,
+      pageSize: 12,
+      sortBy: "recent",
     });
     jobs.value = data.list || [];
-    total.value = data.total || 0;
   } finally {
     loading.value = false;
   }
@@ -139,16 +141,6 @@ async function loadJobs() {
 async function openDetail(jobId: number) {
   jobDetail.value = await getJobDetail(jobId);
   detailVisible.value = true;
-}
-
-function toggleSelectedJob(jobId: number, checked: string | number | boolean) {
-  if (!checked) {
-    selectedJobIds.value = selectedJobIds.value.filter((id) => id !== jobId);
-    return;
-  }
-  if (!selectedJobIds.value.includes(jobId)) {
-    selectedJobIds.value.push(jobId);
-  }
 }
 
 async function getDefaultResumeId() {
@@ -172,21 +164,6 @@ async function applyCurrentJob() {
   await openDetail(jobDetail.value.jobId);
 }
 
-async function batchApplySelectedJobs() {
-  if (!selectedJobIds.value.length) {
-    ElMessage.warning("请先选择职位");
-    return;
-  }
-  const resumeId = await getDefaultResumeId();
-  const data = await batchApplyJobs({
-    jobIds: selectedJobIds.value,
-    resumeId,
-  });
-  ElMessage.success(`批量投递完成，成功 ${data.successCount} 个职位`);
-  selectedJobIds.value = [];
-  await loadJobs();
-}
-
 async function toggleCollect(job: SwanJobSummary) {
   if (!isCandidate.value) {
     goLogin("candidate");
@@ -206,23 +183,16 @@ async function toggleCollect(job: SwanJobSummary) {
   }
 }
 
-function handlePageChange(page: number) {
-  pageNum.value = page;
-  loadJobs();
-}
-
 function goLogin(tab: "candidate" | "enterprise") {
   router.push({
     path: "/login",
-    query: {
-      tab,
-    },
+    query: { tab },
   });
 }
 
 onMounted(() => {
-  loadJobs();
-  scrollToJobListIfNeeded();
+  loadPlatformBrief();
+  loadRecentJobs();
 });
 </script>
 
@@ -231,12 +201,6 @@ onMounted(() => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px 56px;
-}
-
-.pager {
-  display: flex;
-  justify-content: center;
-  margin-top: 32px;
 }
 
 .detail-section {
