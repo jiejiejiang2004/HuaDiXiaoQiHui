@@ -13,7 +13,19 @@ module.exports = {
     ecmaVersion: 2020,
   },
   rules: {
+    "prettier/prettier": ["error", { endOfLine: "auto" }],
     "no-console": process.env.NODE_ENV === "production" ? "warn" : "off",
     "no-debugger": process.env.NODE_ENV === "production" ? "warn" : "off",
   },
+  overrides: [
+    {
+      files: ["*.vue", "**/*.vue"],
+      globals: {
+        defineProps: "readonly",
+        defineEmits: "readonly",
+        defineExpose: "readonly",
+        withDefaults: "readonly",
+      },
+    },
+  ],
 };

@@ -598,7 +598,7 @@ async function refreshUnreadCount() {
 
 function logout() {
   clearAuth();
-  router.push("/login");
+  router.replace("/");
 }
 
 onMounted(async () => {

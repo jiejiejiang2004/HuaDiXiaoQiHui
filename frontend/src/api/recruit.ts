@@ -67,6 +67,17 @@ export function updateProfile(payload: Record<string, unknown>) {
   return http.put("/user/profile", payload);
 }
 
+/** 首页平台概览：注册企业数、岗位总数、注册求职者数（匿名可访问） */
+export interface PlatformPublicBrief {
+  enterpriseCount: number;
+  jobCount: number;
+  candidateCount: number;
+}
+
+export function getPlatformPublicBrief() {
+  return http.get<PlatformPublicBrief>("/home/platform-brief");
+}
+
 export function searchJobs(params: Record<string, unknown>) {
   return http.get("/jobs/search", { params });
 }

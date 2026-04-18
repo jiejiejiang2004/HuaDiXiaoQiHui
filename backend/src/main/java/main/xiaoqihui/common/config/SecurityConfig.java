@@ -103,6 +103,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,
                     "/recruit/api/v1/common/dict/*",
                     "/recruit/api/v1/home/jobs/search",
+                    "/recruit/api/v1/home/platform-brief",
                     "/recruit/api/v1/jobs/search",
                     "/recruit/api/v1/jobs/*",
                     "/uploads/*"

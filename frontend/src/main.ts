@@ -1,8 +1,15 @@
 import { createApp } from "vue";
 import ElementPlus from "element-plus";
 import "element-plus/dist/index.css";
+import "./styles/jobpilot-theme.css";
 import App from "./App.vue";
 import router from "./router";
+import http from "./api/http";
+import { setupMocks } from "./mock/setup";
+
+if (process.env.VUE_APP_USE_MOCK === "true") {
+  setupMocks(http);
+}
 
 const NativeResizeObserver = window.ResizeObserver;
 const nativeConsoleError = window.console.error;
