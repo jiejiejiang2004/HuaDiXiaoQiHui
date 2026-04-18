@@ -1090,7 +1090,7 @@ async function downloadPlatformStatistics() {
 
 function logout() {
   clearAuth();
-  router.push("/login");
+  router.replace("/");
 }
 
 watch(

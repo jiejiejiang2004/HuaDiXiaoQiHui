@@ -25,13 +25,15 @@
         >
           求职
         </router-link>
-        <router-link
-          :to="profileTarget"
+        <a
+          href="#"
           class="swan-top-nav__link"
           :class="{ 'swan-top-nav__link--active': isProfileActive }"
+          :aria-label="isAuthed ? '我的' : '登录'"
+          @click.prevent="onProfileClick"
         >
-          个人主页
-        </router-link>
+          {{ isAuthed ? "我的" : "登录" }}
+        </a>
       </nav>
     </div>
   </header>
@@ -39,10 +41,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { getAccessToken, getUserType } from "@/utils/auth";
+import { openAuthModal, useAuthModal } from "@/composables/useAuthModal";
 
 const route = useRoute();
+const router = useRouter();
+const { visible: authModalVisible } = useAuthModal();
 const token = ref("");
 const userType = ref<ReturnType<typeof getUserType>>("");
 
@@ -62,14 +67,17 @@ const dashboardPath = computed(() => {
     case "ADMIN":
       return "/admin";
     default:
-      return "/login";
+      return "/";
   }
 });
 
-/** 未登录时个人主页进入登录页 */
-const profileTarget = computed(() =>
-  isAuthed.value ? dashboardPath.value : "/login"
-);
+function onProfileClick() {
+  if (isAuthed.value) {
+    router.push(dashboardPath.value);
+  } else {
+    openAuthModal({ tab: "candidate" });
+  }
+}
 
 const isHomeActive = computed(() => route.path === "/");
 
@@ -77,7 +85,7 @@ const isJobsActive = computed(() => route.path === "/jobs");
 
 const isProfileActive = computed(() => {
   if (!isAuthed.value) {
-    return route.path === "/login";
+    return authModalVisible.value;
   }
   return (
     route.path === "/candidate" ||

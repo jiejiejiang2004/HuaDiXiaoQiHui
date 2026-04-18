@@ -1088,7 +1088,7 @@ async function downloadResumePdfFromEnterprise() {
 
 function logout() {
   clearAuth();
-  router.push("/login");
+  router.replace("/");
 }
 
 onMounted(async () => {

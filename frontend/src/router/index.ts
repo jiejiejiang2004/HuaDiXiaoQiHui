@@ -7,8 +7,9 @@ import {
 } from "vue-router";
 import HomeView from "../views/HomeView.vue";
 import JobsView from "../views/JobsView.vue";
-import LoginView from "../views/LoginView.vue";
+import LoginRedirectView from "../views/LoginRedirectView.vue";
 import CandidateCenterView from "../views/CandidateCenterView.vue";
+import { openAuthModal } from "@/composables/useAuthModal";
 import EnterpriseCenterView from "../views/EnterpriseCenterView.vue";
 import AdminCenterView from "../views/AdminCenterView.vue";
 import { getAccessToken, getUserType } from "@/utils/auth";
@@ -27,7 +28,19 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: "/login",
     name: "login",
-    component: LoginView,
+    component: LoginRedirectView,
+    beforeEnter: (to, from, next) => {
+      openAuthModal({
+        tab: typeof to.query.tab === "string" ? to.query.tab : undefined,
+        redirect:
+          typeof to.query.redirect === "string" ? to.query.redirect : undefined,
+      });
+      if (from.matched.length) {
+        next(false);
+      } else {
+        next({ path: "/", replace: true });
+      }
+    },
   },
   {
     path: "/candidate",
@@ -73,7 +86,8 @@ router.beforeEach(
     const userType = getUserType();
     const requiresAuth = Boolean(to.meta.requiresAuth);
     if (requiresAuth && !token) {
-      next("/login");
+      openAuthModal({ redirect: to.fullPath });
+      next(false);
       return;
     }
     const routeUserType = to.meta.userType as string | undefined;
@@ -85,7 +99,7 @@ router.beforeEach(
           ? "/candidate"
           : userType === "ADMIN"
           ? "/admin"
-          : "/login"
+          : "/"
       );
       return;
     }

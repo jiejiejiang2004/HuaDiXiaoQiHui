@@ -4,11 +4,13 @@
     <main class="app-main">
       <router-view />
     </main>
+    <AuthModal />
   </div>
 </template>
 
 <script setup lang="ts">
 import SwanTopNav from "./swan/SwanTopNav.vue";
+import AuthModal from "./AuthModal.vue";
 </script>
 
 <style scoped>
