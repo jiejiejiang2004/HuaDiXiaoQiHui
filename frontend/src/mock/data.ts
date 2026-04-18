@@ -660,6 +660,13 @@ export const MOCK_RESUME_LIST_ITEM = {
   isDefault: true,
 };
 
+/** Mock 专用账号：手机号/密码/登录后展示名（个人中心数据随登录切换） */
+export const MOCK_TEST_LOGIN = {
+  candidate: { mobile: "1", password: "1", userName: "昵称1" },
+  enterprise: { mobile: "2", password: "2", userName: "昵称2" },
+  admin: { mobile: "3", password: "3", userName: "昵称3" },
+} as const;
+
 export const MOCK_RESUME_DETAIL = {
   resumeId: 7001,
   title: "校招-Java 开发",
@@ -700,6 +707,22 @@ export const MOCK_RESUME_DETAIL = {
   ],
 };
 
+export const MOCK_RESUME_DETAIL_TEST_1 = {
+  ...MOCK_RESUME_DETAIL,
+  title: "昵称1-默认简历",
+  basicInfo: {
+    ...MOCK_RESUME_DETAIL.basicInfo,
+    name: "昵称1",
+    email: "candidate1@mock.local",
+  },
+};
+
+export const MOCK_RESUME_LIST_ITEM_TEST_1 = {
+  resumeId: 7001,
+  title: "昵称1-默认简历",
+  isDefault: true,
+};
+
 export const MOCK_PROFILE = {
   name: "张同学",
   mobile: "138****5678",
@@ -707,6 +730,15 @@ export const MOCK_PROFILE = {
   school: "四川大学",
   major: "软件工程",
   currentCity: "成都",
+};
+
+export const MOCK_PROFILE_TEST_CANDIDATE_1 = {
+  name: "昵称1",
+  mobile: "1*********",
+  email: "candidate1@mock.local",
+  school: "示例大学",
+  major: "计算机科学与技术",
+  currentCity: "北京",
 };
 
 export const MOCK_APPLY_LIST = [
@@ -783,6 +815,15 @@ export const MOCK_ENTERPRISE_INFO = {
   licenseImage: "",
   logo: "",
   logoFileUrl: "",
+};
+
+export const MOCK_ENTERPRISE_INFO_TEST_2 = {
+  ...MOCK_ENTERPRISE_INFO,
+  companyName: "昵称2",
+  introduction:
+    "Mock 企业账号（手机 2 / 密码 2），用于调试企业端个人资料展示。",
+  creditCode: "91510100MA6MOCK002",
+  legalPerson: "昵称2",
 };
 
 export const MOCK_ENTERPRISE_AUTH = {

@@ -81,7 +81,9 @@ function onProfileClick() {
 
 const isHomeActive = computed(() => route.path === "/");
 
-const isJobsActive = computed(() => route.path === "/jobs");
+const isJobsActive = computed(
+  () => route.path === "/jobs" || route.name === "job-detail"
+);
 
 const isProfileActive = computed(() => {
   if (!isAuthed.value) {

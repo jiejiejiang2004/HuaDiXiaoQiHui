@@ -26,39 +26,6 @@
     />
 
     <el-empty v-if="!loading && !jobs.length" description="暂无职位展示" />
-
-    <el-dialog v-model="detailVisible" title="职位详情" width="720px">
-      <template v-if="jobDetail">
-        <div class="detail-section">
-          <h2>{{ jobDetail.jobName }}</h2>
-          <p>{{ jobDetail.companyName }} | {{ jobDetail.location }}</p>
-          <p>
-            {{ jobDetail.salaryMin }} - {{ jobDetail.salaryMax }} /
-            {{ jobDetail.education }} / {{ jobDetail.experience }}
-          </p>
-        </div>
-        <div class="detail-section">
-          <h4>岗位职责</h4>
-          <p>{{ jobDetail.responsibility }}</p>
-        </div>
-        <div class="detail-section">
-          <h4>任职要求</h4>
-          <p>{{ jobDetail.requirement }}</p>
-        </div>
-      </template>
-      <template #footer>
-        <el-button @click="detailVisible = false">关闭</el-button>
-        <el-button
-          v-if="!isCandidate"
-          type="primary"
-          @click="goLogin('candidate')"
-          >登录后投递</el-button
-        >
-        <el-button v-else type="primary" @click="applyCurrentJob"
-          >立即投递</el-button
-        >
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -71,11 +38,8 @@ import SwanHowItWorks from "@/components/swan/SwanHowItWorks.vue";
 import SwanJobListSection from "@/components/swan/SwanJobListSection.vue";
 import type { SwanJobSummary } from "@/components/swan/types";
 import {
-  applyJob,
   collectJob,
-  getJobDetail,
   getPlatformPublicBrief,
-  listResumes,
   searchJobs,
   uncollectJob,
   type PlatformPublicBrief,
@@ -88,8 +52,6 @@ const loading = ref(false);
 const platformBrief = ref<PlatformPublicBrief | null>(null);
 const statsLoading = ref(true);
 const jobs = ref<SwanJobSummary[]>([]);
-const detailVisible = ref(false);
-const jobDetail = ref<SwanJobSummary | null>(null);
 const isCandidate = computed(() => getUserType() === "CANDIDATE");
 const filters = reactive({
   keyword: "",
@@ -141,30 +103,8 @@ async function loadRecentJobs() {
   }
 }
 
-async function openDetail(jobId: number) {
-  jobDetail.value = await getJobDetail(jobId);
-  detailVisible.value = true;
-}
-
-async function getDefaultResumeId() {
-  const data = await listResumes();
-  const defaultResume =
-    (data.list || []).find((item: Record<string, unknown>) => item.isDefault) ||
-    data.list?.[0];
-  if (!defaultResume) {
-    throw new Error("请先在个人中心创建简历");
-  }
-  return Number(defaultResume.resumeId);
-}
-
-async function applyCurrentJob() {
-  if (!jobDetail.value) {
-    return;
-  }
-  const resumeId = await getDefaultResumeId();
-  await applyJob({ jobId: jobDetail.value.jobId, resumeId });
-  ElMessage.success("职位投递成功");
-  await openDetail(jobDetail.value.jobId);
+function openDetail(jobId: number) {
+  router.push({ name: "job-detail", params: { jobId: String(jobId) } });
 }
 
 async function toggleCollect(job: SwanJobSummary) {
@@ -180,9 +120,6 @@ async function toggleCollect(job: SwanJobSummary) {
     await collectJob(job.jobId);
     job.collected = true;
     ElMessage.success("已收藏职位");
-  }
-  if (jobDetail.value?.jobId === job.jobId) {
-    jobDetail.value.collected = job.collected;
   }
 }
 
@@ -204,20 +141,5 @@ onMounted(() => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px 56px;
-}
-
-.detail-section {
-  margin-bottom: 16px;
-}
-
-.detail-section h2,
-.detail-section h4 {
-  margin: 0 0 8px;
-}
-
-.detail-section p {
-  margin: 0;
-  line-height: 1.8;
-  color: #475569;
 }
 </style>

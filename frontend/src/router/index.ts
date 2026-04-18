@@ -7,6 +7,7 @@ import {
 } from "vue-router";
 import HomeView from "../views/HomeView.vue";
 import JobsView from "../views/JobsView.vue";
+import JobDetailView from "../views/JobDetailView.vue";
 import LoginRedirectView from "../views/LoginRedirectView.vue";
 import CandidateCenterView from "../views/CandidateCenterView.vue";
 import { openAuthModal } from "@/composables/useAuthModal";
@@ -24,6 +25,11 @@ const routes: Array<RouteRecordRaw> = [
     path: "/jobs",
     name: "jobs",
     component: JobsView,
+  },
+  {
+    path: "/jobs/:jobId",
+    name: "job-detail",
+    component: JobDetailView,
   },
   {
     path: "/login",
