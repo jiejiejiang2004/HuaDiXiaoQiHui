@@ -48,7 +48,15 @@ backend/*.ipr
 # NetBeans
 backend/nbproject/private/
 backend/nbbuild/
-backend/dist/
+backend/dist/# 检查前端文件
+git check-ignore -v frontend/package.json
+# 检查后端文件
+git check-ignore -v backend/src/main/java/main/xiaoqihui/XiaoQiHuiApplication.java
+# 检查前端文件
+git check-ignore -v frontend/package.json
+# 检查后端文件
+git check-ignore -v backend/src/main/java/main/xiaoqihui/XiaoQiHuiApplication.java
+
 backend/nbdist/
 backend/.nb-gradle/
 backend/build/
