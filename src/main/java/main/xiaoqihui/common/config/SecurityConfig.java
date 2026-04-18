@@ -86,6 +86,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.POST,
                     "/recruit/api/v1/common/email/send",
+                    "/recruit/api/v1/internal/message/push",
+                    "/recruit/api/v1/internal/sso/verify",
+                    "/recruit/api/v1/internal/email/send",
                     "/recruit/api/v1/user/register",
                     "/recruit/api/v1/user/login/password",
                     "/recruit/api/v1/user/login/email",

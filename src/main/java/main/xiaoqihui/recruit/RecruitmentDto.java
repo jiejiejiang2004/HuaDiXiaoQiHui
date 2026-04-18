@@ -161,6 +161,12 @@ record TalentContactRequest(
 ) {
 }
 
+record ResumeBatchExportRequest(
+    @NotEmpty List<Long> resumeIds,
+    String format
+) {
+}
+
 record EnterpriseInfoUpdateRequest(
     String industry,
     String scale,

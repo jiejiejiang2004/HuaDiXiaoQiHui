@@ -472,6 +472,90 @@ public interface RecruitmentMapper {
     @Select("select count(1) from job_application where enterprise_id = #{enterpriseId} and resume_id = #{resumeId}")
     long countEnterpriseResumeAccess(@Param("enterpriseId") Long enterpriseId, @Param("resumeId") Long resumeId);
 
+    @Select("select count(1) from enterprise_resume_favorite where enterprise_id = #{enterpriseId} and resume_id = #{resumeId}")
+    long countEnterpriseResumeFavorite(@Param("enterpriseId") Long enterpriseId, @Param("resumeId") Long resumeId);
+
+    @Insert("insert into enterprise_resume_favorite (enterprise_id, resume_id) values (#{enterpriseId}, #{resumeId})")
+    int insertEnterpriseResumeFavorite(@Param("enterpriseId") Long enterpriseId, @Param("resumeId") Long resumeId);
+
+    @Delete("delete from enterprise_resume_favorite where enterprise_id = #{enterpriseId} and resume_id = #{resumeId}")
+    int deleteEnterpriseResumeFavorite(@Param("enterpriseId") Long enterpriseId, @Param("resumeId") Long resumeId);
+
+    @Select("""
+        select r.*
+        from enterprise_resume_favorite erf
+        join resume r on r.resume_id = erf.resume_id
+        where erf.enterprise_id = #{enterpriseId}
+        order by erf.create_time desc
+        limit #{limit} offset #{offset}
+        """)
+    List<ResumeEntity> listEnterpriseFavoriteResumes(@Param("enterpriseId") Long enterpriseId, @Param("offset") int offset, @Param("limit") int limit);
+
+    @Select("select count(1) from enterprise_resume_favorite where enterprise_id = #{enterpriseId}")
+    long countEnterpriseFavoriteResumes(Long enterpriseId);
+
+    @Select("""
+        <script>
+        select distinct r.*
+        from enterprise_resume_favorite erf
+        join resume r on r.resume_id = erf.resume_id
+        left join job_application ja on ja.resume_id = r.resume_id and ja.enterprise_id = erf.enterprise_id
+        where erf.enterprise_id = #{enterpriseId}
+        <if test="major != null and major != ''">
+            and json_unquote(json_extract(r.education_list, '$[0].major')) like concat('%', #{major}, '%')
+        </if>
+        <if test="education != null and education != ''">
+            and json_unquote(json_extract(r.education_list, '$[0].degree')) = #{education}
+        </if>
+        <if test="skillKeywords != null and skillKeywords != ''">
+            and lower(cast(r.skill_list as char)) like concat('%', lower(#{skillKeywords}), '%')
+        </if>
+        <if test="jobId != null">
+            and ja.job_id = #{jobId}
+        </if>
+        order by r.update_time desc
+        limit #{limit} offset #{offset}
+        </script>
+        """)
+    List<ResumeEntity> searchEnterpriseFavoriteResumes(
+        @Param("enterpriseId") Long enterpriseId,
+        @Param("major") String major,
+        @Param("education") String education,
+        @Param("skillKeywords") String skillKeywords,
+        @Param("jobId") Long jobId,
+        @Param("offset") int offset,
+        @Param("limit") int limit
+    );
+
+    @Select("""
+        <script>
+        select count(distinct r.resume_id)
+        from enterprise_resume_favorite erf
+        join resume r on r.resume_id = erf.resume_id
+        left join job_application ja on ja.resume_id = r.resume_id and ja.enterprise_id = erf.enterprise_id
+        where erf.enterprise_id = #{enterpriseId}
+        <if test="major != null and major != ''">
+            and json_unquote(json_extract(r.education_list, '$[0].major')) like concat('%', #{major}, '%')
+        </if>
+        <if test="education != null and education != ''">
+            and json_unquote(json_extract(r.education_list, '$[0].degree')) = #{education}
+        </if>
+        <if test="skillKeywords != null and skillKeywords != ''">
+            and lower(cast(r.skill_list as char)) like concat('%', lower(#{skillKeywords}), '%')
+        </if>
+        <if test="jobId != null">
+            and ja.job_id = #{jobId}
+        </if>
+        </script>
+        """)
+    long countSearchEnterpriseFavoriteResumes(
+        @Param("enterpriseId") Long enterpriseId,
+        @Param("major") String major,
+        @Param("education") String education,
+        @Param("skillKeywords") String skillKeywords,
+        @Param("jobId") Long jobId
+    );
+
     @Insert("""
         insert into job_application (
             job_id, resume_id, user_id, enterprise_id, cover_letter, status

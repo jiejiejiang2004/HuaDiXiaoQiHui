@@ -110,6 +110,11 @@ public class AdminController {
         return ApiResponse.success();
     }
 
+    @PutMapping("/admin/audit/resumes/{resumeId}/moderate")
+    public ApiResponse<?> moderateResume(@PathVariable Long resumeId, @Valid @RequestBody ResumeModerationRequest request) {
+        return ApiResponse.success(adminService.moderateResume(resumeId, request));
+    }
+
     @GetMapping("/admin/system/categories")
     public ApiResponse<?> listCategories(@RequestParam(required = false) Long parentId) {
         return ApiResponse.success(adminService.listCategories(parentId));
@@ -228,5 +233,17 @@ public class AdminController {
         @RequestParam(defaultValue = "10") int pageSize
     ) {
         return ApiResponse.success(adminService.listAuditLogs(pageNum, pageSize));
+    }
+
+    @GetMapping("/admin/system/logs/operation")
+    public ApiResponse<?> listOperationLogs(
+        @RequestParam(required = false) Long userId,
+        @RequestParam(required = false) String action,
+        @RequestParam(required = false) String startTime,
+        @RequestParam(required = false) String endTime,
+        @RequestParam(defaultValue = "1") int pageNum,
+        @RequestParam(defaultValue = "10") int pageSize
+    ) {
+        return ApiResponse.success(adminService.listOperationLogs(userId, action, startTime, endTime, pageNum, pageSize));
     }
 }

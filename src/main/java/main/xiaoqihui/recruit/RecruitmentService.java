@@ -11,12 +11,17 @@ import main.xiaoqihui.common.exception.BusinessException;
 import main.xiaoqihui.common.security.LoginUser;
 import main.xiaoqihui.common.util.JwtUtil;
 import main.xiaoqihui.common.util.SecurityUtils;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -24,6 +29,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class RecruitmentService {
@@ -255,11 +261,69 @@ public class RecruitmentService {
 
     public Map<String, Object> getEnterpriseResumeDetail(Long resumeId) {
         Long enterpriseId = requireEnterprise().getEnterpriseId();
-        ResumeEntity resume = recruitmentMapper.findResumeById(resumeId);
-        if (resume == null || recruitmentMapper.countEnterpriseResumeAccess(enterpriseId, resumeId) == 0) {
-            throw new BusinessException(4001, "简历不存在");
-        }
+        ResumeEntity resume = requireEnterpriseVisibleResume(enterpriseId, resumeId);
         return buildResumeDetail(resume);
+    }
+
+    @Transactional
+    public Map<String, Object> favoriteEnterpriseResume(Long resumeId) {
+        Long enterpriseId = requireEnterprise().getEnterpriseId();
+        ResumeEntity resume = requireEnterpriseVisibleResume(enterpriseId, resumeId);
+        if (recruitmentMapper.countEnterpriseResumeFavorite(enterpriseId, resumeId) == 0) {
+            recruitmentMapper.insertEnterpriseResumeFavorite(enterpriseId, resumeId);
+        }
+        Map<String, Object> data = buildEnterpriseFavoriteResumeSummary(enterpriseId, resume);
+        data.put("favorited", true);
+        return data;
+    }
+
+    @Transactional
+    public void unfavoriteEnterpriseResume(Long resumeId) {
+        Long enterpriseId = requireEnterprise().getEnterpriseId();
+        recruitmentMapper.deleteEnterpriseResumeFavorite(enterpriseId, resumeId);
+    }
+
+    public Map<String, Object> listEnterpriseFavoriteResumes(int pageNum, int pageSize) {
+        Long enterpriseId = requireEnterprise().getEnterpriseId();
+        int offset = (pageNum - 1) * pageSize;
+        List<ResumeEntity> resumes = recruitmentMapper.listEnterpriseFavoriteResumes(enterpriseId, offset, pageSize);
+        long total = recruitmentMapper.countEnterpriseFavoriteResumes(enterpriseId);
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (ResumeEntity resume : resumes) {
+            list.add(buildEnterpriseFavoriteResumeSummary(enterpriseId, resume));
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("list", list);
+        data.put("total", total);
+        data.put("pageNum", pageNum);
+        data.put("pageSize", pageSize);
+        return data;
+    }
+
+    public Map<String, Object> searchEnterpriseFavoriteResumes(
+        String major,
+        String education,
+        String skillKeywords,
+        Long jobId,
+        int pageNum,
+        int pageSize
+    ) {
+        Long enterpriseId = requireEnterprise().getEnterpriseId();
+        int offset = (pageNum - 1) * pageSize;
+        List<ResumeEntity> resumes = recruitmentMapper.searchEnterpriseFavoriteResumes(
+            enterpriseId, major, education, skillKeywords, jobId, offset, pageSize
+        );
+        long total = recruitmentMapper.countSearchEnterpriseFavoriteResumes(enterpriseId, major, education, skillKeywords, jobId);
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (ResumeEntity resume : resumes) {
+            list.add(buildEnterpriseFavoriteResumeSummary(enterpriseId, resume));
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("list", list);
+        data.put("total", total);
+        data.put("pageNum", pageNum);
+        data.put("pageSize", pageSize);
+        return data;
     }
 
     public Map<String, Object> exportResumePdf(Long resumeId) {
@@ -270,11 +334,36 @@ public class RecruitmentService {
 
     public Map<String, Object> exportEnterpriseResumePdf(Long resumeId) {
         Long enterpriseId = requireEnterprise().getEnterpriseId();
-        ResumeEntity resume = recruitmentMapper.findResumeById(resumeId);
-        if (resume == null || recruitmentMapper.countEnterpriseResumeAccess(enterpriseId, resumeId) == 0) {
-            throw new BusinessException(4001, "简历不存在");
-        }
+        ResumeEntity resume = requireEnterpriseVisibleResume(enterpriseId, resumeId);
         return buildResumePdfResponse(resume, "RESUME_EXPORT");
+    }
+
+    public Map<String, Object> batchExportEnterpriseResumes(ResumeBatchExportRequest request) {
+        Long enterpriseId = requireEnterprise().getEnterpriseId();
+        if (request.resumeIds().size() > 100) {
+            throw new BusinessException(1001, "批量导出最多支持100份简历");
+        }
+        List<ResumeEntity> resumes = new ArrayList<>();
+        for (Long resumeId : request.resumeIds()) {
+            resumes.add(requireEnterpriseVisibleResume(enterpriseId, resumeId));
+        }
+        String format = request.format() == null || request.format().isBlank()
+            ? "PDF"
+            : request.format().trim().toUpperCase();
+        String taskId = UUID.randomUUID().toString().replace("-", "");
+        String fileName = "enterprise-resumes-" + LocalDate.now() + ("EXCEL".equals(format) || "XLSX".equals(format) ? ".xlsx" : ".pdf");
+        byte[] content = ("EXCEL".equals(format) || "XLSX".equals(format))
+            ? buildResumeBatchExcel(resumes)
+            : htmlPdfRenderService.render(buildResumeBatchHtml(resumes));
+        FileRecordEntity fileRecord = commonService.saveGeneratedFile("RESUME_EXPORT", fileName, content);
+        return Map.of(
+            "taskId", taskId,
+            "status", "SUCCESS",
+            "downloadUrl", fileRecord.getFileUrl(),
+            "fileId", fileRecord.getFileId(),
+            "fileName", fileName,
+            "resumeCount", resumes.size()
+        );
     }
 
     @Transactional
@@ -1021,8 +1110,22 @@ public class RecruitmentService {
 
     private ResumeEntity requireTalentResume(Long resumeId) {
         ResumeEntity resume = recruitmentMapper.findResumeById(resumeId);
-        if (resume == null || (!"PUBLIC".equals(resume.getPrivacy()) && !"ENTERPRISE_ONLY".equals(resume.getPrivacy()))) {
+        if (resume == null || !isEnterpriseVisiblePrivacy(resume)) {
             throw new BusinessException(4001, "公开人才不存在");
+        }
+        return resume;
+    }
+
+    private ResumeEntity requireEnterpriseVisibleResume(Long enterpriseId, Long resumeId) {
+        ResumeEntity resume = recruitmentMapper.findResumeById(resumeId);
+        if (resume == null) {
+            throw new BusinessException(4001, "简历不存在");
+        }
+        boolean visible = recruitmentMapper.countEnterpriseResumeAccess(enterpriseId, resumeId) > 0
+            || recruitmentMapper.countEnterpriseResumeFavorite(enterpriseId, resumeId) > 0
+            || isEnterpriseVisiblePrivacy(resume);
+        if (!visible) {
+            throw new BusinessException(4001, "简历不存在");
         }
         return resume;
     }
@@ -1142,6 +1245,16 @@ public class RecruitmentService {
         return item;
     }
 
+    private Map<String, Object> buildEnterpriseFavoriteResumeSummary(Long enterpriseId, ResumeEntity resume) {
+        Map<String, Object> item = new LinkedHashMap<>(buildTalentSummary(resume));
+        item.put("title", resume.getTitle());
+        item.put("privacy", resume.getPrivacy());
+        item.put("updateTime", resume.getUpdateTime());
+        item.put("favorited", recruitmentMapper.countEnterpriseResumeFavorite(enterpriseId, resume.getResumeId()) > 0);
+        item.put("applied", recruitmentMapper.countEnterpriseResumeAccess(enterpriseId, resume.getResumeId()) > 0);
+        return item;
+    }
+
     private Map<String, Object> buildResumePdfResponse(ResumeEntity resume, String bizType) {
         Map<String, Object> detail = buildResumeDetail(resume);
         String fileName = resume.getTitle() + "-" + resume.getResumeId() + ".pdf";
@@ -1197,6 +1310,84 @@ public class RecruitmentService {
         html.append("<h2>自我评价</h2><p>").append(escapeHtml(detail.get("selfEvaluation"))).append("</p>");
         html.append("</div></body></html>");
         return html.toString();
+    }
+
+    private String buildResumeBatchHtml(List<ResumeEntity> resumes) {
+        StringBuilder html = new StringBuilder();
+        html.append("<html><body style=\"font-family:Arial,'Microsoft YaHei',sans-serif;color:#1f2937;padding:24px;\">");
+        for (int i = 0; i < resumes.size(); i++) {
+            Map<String, Object> detail = buildResumeDetail(resumes.get(i));
+            Map<String, Object> basicInfo = castMap(detail.get("basicInfo"));
+            Map<String, Object> jobIntention = castMap(detail.get("jobIntention"));
+            List<Object> educationList = castList(detail.get("educationList"));
+            List<Object> workList = castList(detail.get("workList"));
+            List<Object> skillList = castList(detail.get("skillList"));
+            html.append("<div style=\"max-width:860px;margin:0 auto;\">")
+                .append("<h1 style=\"margin-bottom:8px;\">校企慧简历批量导出</h1>")
+                .append("<p style=\"color:#6b7280;margin-bottom:24px;\">简历标题：").append(escapeHtml(detail.get("title"))).append("</p>")
+                .append("<table style=\"width:100%;border-collapse:collapse;margin-bottom:24px;\">")
+                .append("<tr><td style=\"padding:8px;border:1px solid #e5e7eb;\">姓名</td><td style=\"padding:8px;border:1px solid #e5e7eb;\">").append(escapeHtml(basicInfo.get("name"))).append("</td>")
+                .append("<td style=\"padding:8px;border:1px solid #e5e7eb;\">电话</td><td style=\"padding:8px;border:1px solid #e5e7eb;\">").append(escapeHtml(basicInfo.get("mobile"))).append("</td></tr>")
+                .append("<tr><td style=\"padding:8px;border:1px solid #e5e7eb;\">邮箱</td><td style=\"padding:8px;border:1px solid #e5e7eb;\">").append(escapeHtml(basicInfo.get("email"))).append("</td>")
+                .append("<td style=\"padding:8px;border:1px solid #e5e7eb;\">期望职位</td><td style=\"padding:8px;border:1px solid #e5e7eb;\">").append(escapeHtml(jobIntention.get("expectPosition"))).append("</td></tr>")
+                .append("</table><h2>教育经历</h2>");
+            appendSectionList(html, educationList, "school", "major", "degree", "startDate", "endDate");
+            html.append("<h2>工作经历</h2>");
+            appendSectionList(html, workList, "company", "position", "description", "startDate", "endDate");
+            html.append("<h2>技能标签</h2><p>").append(escapeHtml(joinSkillList(skillList))).append("</p>");
+            html.append("<h2>自我评价</h2><p>").append(escapeHtml(detail.get("selfEvaluation"))).append("</p>");
+            html.append("</div>");
+            if (i < resumes.size() - 1) {
+                html.append("<div style=\"page-break-after:always;\"></div>");
+            }
+        }
+        html.append("</body></html>");
+        return html.toString();
+    }
+
+    private byte[] buildResumeBatchExcel(List<ResumeEntity> resumes) {
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            XSSFSheet sheet = workbook.createSheet("resume_export");
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("简历ID");
+            header.createCell(1).setCellValue("标题");
+            header.createCell(2).setCellValue("姓名");
+            header.createCell(3).setCellValue("电话");
+            header.createCell(4).setCellValue("邮箱");
+            header.createCell(5).setCellValue("学历");
+            header.createCell(6).setCellValue("学校");
+            header.createCell(7).setCellValue("专业");
+            header.createCell(8).setCellValue("期望职位");
+            header.createCell(9).setCellValue("期望城市");
+            header.createCell(10).setCellValue("技能");
+            int rowNum = 1;
+            for (ResumeEntity resume : resumes) {
+                Map<String, Object> detail = buildResumeDetail(resume);
+                Map<String, Object> basicInfo = castMap(detail.get("basicInfo"));
+                Map<String, Object> jobIntention = castMap(detail.get("jobIntention"));
+                List<Object> educationList = castList(detail.get("educationList"));
+                Map<String, Object> latestEducation = educationList.isEmpty() ? Map.of() : castMap(educationList.get(0));
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(String.valueOf(resume.getResumeId()));
+                row.createCell(1).setCellValue(String.valueOf(resume.getTitle()));
+                row.createCell(2).setCellValue(String.valueOf(basicInfo.getOrDefault("name", "")));
+                row.createCell(3).setCellValue(String.valueOf(basicInfo.getOrDefault("mobile", "")));
+                row.createCell(4).setCellValue(String.valueOf(basicInfo.getOrDefault("email", "")));
+                row.createCell(5).setCellValue(String.valueOf(latestEducation.getOrDefault("degree", "")));
+                row.createCell(6).setCellValue(String.valueOf(latestEducation.getOrDefault("school", "")));
+                row.createCell(7).setCellValue(String.valueOf(latestEducation.getOrDefault("major", "")));
+                row.createCell(8).setCellValue(String.valueOf(jobIntention.getOrDefault("expectPosition", "")));
+                row.createCell(9).setCellValue(String.valueOf(jobIntention.getOrDefault("expectCity", "")));
+                row.createCell(10).setCellValue(joinSkillList(castList(detail.get("skillList"))));
+            }
+            for (int i = 0; i <= 10; i++) {
+                sheet.autoSizeColumn(i);
+            }
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        } catch (IOException ex) {
+            throw new BusinessException(7001, "简历导出失败");
+        }
     }
 
     private void appendSectionList(StringBuilder html, List<Object> rows, String primaryKey, String secondaryKey, String tertiaryKey, String startKey, String endKey) {
@@ -1304,6 +1495,10 @@ public class RecruitmentService {
             return "求职者";
         }
         return name.length() <= 1 ? name + "*" : name.charAt(0) + "*".repeat(Math.max(1, name.length() - 1));
+    }
+
+    private boolean isEnterpriseVisiblePrivacy(ResumeEntity resume) {
+        return "PUBLIC".equals(resume.getPrivacy()) || "ENTERPRISE_ONLY".equals(resume.getPrivacy());
     }
 
     private String writeJson(Object value) {

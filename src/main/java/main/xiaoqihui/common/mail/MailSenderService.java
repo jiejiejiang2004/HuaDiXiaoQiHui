@@ -28,10 +28,13 @@ public class MailSenderService {
     }
 
     public void sendVerificationCode(String email, String scene, String code) {
+        sendHtmlEmail(email, "校企慧邮箱验证码", buildVerificationHtml(scene, code));
+    }
+
+    public void sendHtmlEmail(String email, String subject, String html) {
         JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
-        String html = buildVerificationHtml(scene, code);
         if (mailSender == null || !StringUtils.hasText(fromAddress)) {
-            log.info("邮件发送模拟: to={}, scene={}, code={}, html={}", email, scene, code, html);
+            log.info("邮件发送模拟: to={}, subject={}, html={}", email, subject, html);
             return;
         }
         try {
@@ -39,11 +42,11 @@ public class MailSenderService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(fromAddress);
             helper.setTo(email);
-            helper.setSubject("校企慧邮箱验证码");
+            helper.setSubject(subject);
             helper.setText(html, true);
             mailSender.send(message);
         } catch (Exception ex) {
-            log.error("邮件发送失败: to={}, scene={}", email, scene, ex);
+            log.error("邮件发送失败: to={}, subject={}", email, subject, ex);
         }
     }
 

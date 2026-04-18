@@ -82,3 +82,9 @@ record MessageTemplateUpdateRequest(
     String enabled
 ) {
 }
+
+record ResumeModerationRequest(
+    @NotBlank String action,
+    String reason
+) {
+}

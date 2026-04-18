@@ -359,6 +359,68 @@ public interface AdminMapper {
     @Select("select count(1) from sys_audit_log")
     long countAuditLogs();
 
+    @Insert("""
+        insert into sys_operation_log (user_id, user_name, action, resource, detail, ip)
+        values (#{userId}, #{userName}, #{action}, #{resource}, #{detail}, #{ip})
+        """)
+    @Options(useGeneratedKeys = true, keyProperty = "logId")
+    int insertOperationLog(OperationLogEntity log);
+
+    @Select("""
+        <script>
+        select * from sys_operation_log
+        where 1 = 1
+        <if test="userId != null">
+            and user_id = #{userId}
+        </if>
+        <if test="action != null and action != ''">
+            and action = #{action}
+        </if>
+        <if test="startTime != null and startTime != ''">
+            and create_time <![CDATA[>=]]> #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            and create_time <![CDATA[<=]]> #{endTime}
+        </if>
+        order by create_time desc
+        limit #{limit} offset #{offset}
+        </script>
+        """)
+    List<OperationLogEntity> listOperationLogs(
+        @Param("userId") Long userId,
+        @Param("action") String action,
+        @Param("startTime") String startTime,
+        @Param("endTime") String endTime,
+        @Param("offset") int offset,
+        @Param("limit") int limit
+    );
+
+    @Select("""
+        <script>
+        select count(1)
+        from sys_operation_log
+        where 1 = 1
+        <if test="userId != null">
+            and user_id = #{userId}
+        </if>
+        <if test="action != null and action != ''">
+            and action = #{action}
+        </if>
+        <if test="startTime != null and startTime != ''">
+            and create_time <![CDATA[>=]]> #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            and create_time <![CDATA[<=]]> #{endTime}
+        </if>
+        </script>
+        """)
+    long countOperationLogs(
+        @Param("userId") Long userId,
+        @Param("action") String action,
+        @Param("startTime") String startTime,
+        @Param("endTime") String endTime
+    );
+
     @Select("""
         select banner_id, title, image_file_id, image_url, link_url, sort, status, start_time, end_time, create_time, update_time
         from sys_banner

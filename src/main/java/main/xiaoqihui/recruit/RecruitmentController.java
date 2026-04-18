@@ -381,6 +381,44 @@ public class RecruitmentController {
         return ApiResponse.success(recruitmentService.getEnterpriseResumeDetail(resumeId));
     }
 
+    @PostMapping("/enterprise/resumes/{resumeId}/favorite")
+    public ApiResponse<?> favoriteEnterpriseResume(@PathVariable Long resumeId) {
+        return ApiResponse.success(recruitmentService.favoriteEnterpriseResume(resumeId));
+    }
+
+    @DeleteMapping("/enterprise/resumes/{resumeId}/favorite")
+    public ApiResponse<?> unfavoriteEnterpriseResume(@PathVariable Long resumeId) {
+        recruitmentService.unfavoriteEnterpriseResume(resumeId);
+        return ApiResponse.success();
+    }
+
+    @GetMapping("/enterprise/resumes/favorites")
+    public ApiResponse<?> listEnterpriseFavoriteResumes(
+        @RequestParam(defaultValue = "1") int pageNum,
+        @RequestParam(defaultValue = "10") int pageSize
+    ) {
+        return ApiResponse.success(recruitmentService.listEnterpriseFavoriteResumes(pageNum, pageSize));
+    }
+
+    @GetMapping("/enterprise/resumes/search")
+    public ApiResponse<?> searchEnterpriseFavoriteResumes(
+        @RequestParam(required = false) String major,
+        @RequestParam(required = false) String education,
+        @RequestParam(required = false) String skillKeywords,
+        @RequestParam(required = false) Long jobId,
+        @RequestParam(defaultValue = "1") int pageNum,
+        @RequestParam(defaultValue = "10") int pageSize
+    ) {
+        return ApiResponse.success(
+            recruitmentService.searchEnterpriseFavoriteResumes(major, education, skillKeywords, jobId, pageNum, pageSize)
+        );
+    }
+
+    @PostMapping("/enterprise/resumes/export")
+    public ApiResponse<?> batchExportEnterpriseResumes(@Valid @RequestBody ResumeBatchExportRequest request) {
+        return ApiResponse.success(recruitmentService.batchExportEnterpriseResumes(request));
+    }
+
     @GetMapping("/enterprise/resumes/{resumeId}/export/pdf")
     public ApiResponse<?> exportEnterpriseResumePdf(@PathVariable Long resumeId) {
         return ApiResponse.success(recruitmentService.exportEnterpriseResumePdf(resumeId));
