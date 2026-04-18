@@ -8,15 +8,38 @@ import {
 } from "@/utils/auth";
 
 export const API_BASE_URL =
-  process.env.VUE_APP_API_BASE_URL || "http://localhost:8084/recruit/api/v1";
+  process.env.VUE_APP_API_BASE_URL || "/recruit/api/v1";
+
 export const API_ORIGIN = API_BASE_URL.replace("/recruit/api/v1", "");
 
 const http = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_BASE_URL, // 此时 baseURL 为 "/recruit/api/v1"
   timeout: 10000,
 });
 
 let refreshingPromise: Promise<string> | null = null;
+
+function toHandledError(
+  source: unknown,
+  fallbackMessage: string
+): Error & {
+  code?: number;
+  handled: boolean;
+  payload?: unknown;
+} {
+  const payload = source as { code?: number; message?: string } | undefined;
+  const message = payload?.message || fallbackMessage;
+  const error = new Error(message) as Error & {
+    code?: number;
+    handled: boolean;
+    payload?: unknown;
+  };
+  error.name = "HandledHttpError";
+  error.code = payload?.code;
+  error.handled = true;
+  error.payload = source;
+  return error;
+}
 
 async function refreshAccessTokenIfNeeded(): Promise<string> {
   if (refreshingPromise) {
@@ -60,7 +83,7 @@ http.interceptors.response.use(
     const payload = response.data;
     if (payload?.code !== 0) {
       ElMessage.error(payload?.message || "请求失败");
-      return Promise.reject(payload);
+      return Promise.reject(toHandledError(payload, "请求失败"));
     }
     return payload.data;
   },
@@ -90,8 +113,12 @@ http.interceptors.response.use(
     } else if (code === 2001) {
       clearAuth();
     }
-    ElMessage.error(errorData?.message || error.message || "网络异常");
-    return Promise.reject(error);
+    const handledError = toHandledError(
+      errorData || { message: error.message },
+      error.message || "网络异常"
+    );
+    ElMessage.error(handledError.message || "网络异常");
+    return Promise.reject(handledError);
   }
 );
 

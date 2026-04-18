@@ -379,7 +379,7 @@
             <el-table-column prop="education" label="学历" width="120" />
             <el-table-column prop="school" label="学校" />
             <el-table-column prop="major" label="专业" />
-            <el-table-column label="操作" width="180">
+            <el-table-column label="操作" width="240">
               <template #default="{ row }">
                 <el-button text type="primary" @click="openTalent(row.resumeId)"
                   >查看</el-button
@@ -390,6 +390,88 @@
                   @click="openTalentContact(row.resumeId)"
                   >沟通</el-button
                 >
+                <el-button text @click="toggleFavoriteResume(row.resumeId)">
+                  {{ isFavoriteResume(row.resumeId) ? "取消收藏" : "收藏" }}
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="16" class="section-gap">
+      <el-col :span="24">
+        <el-card shadow="hover">
+          <template #header>企业简历收藏夹</template>
+          <div class="toolbar">
+            <el-input
+              v-model="favoriteResumeFilters.major"
+              placeholder="专业"
+            />
+            <el-input
+              v-model="favoriteResumeFilters.education"
+              placeholder="学历"
+            />
+            <el-input
+              v-model="favoriteResumeFilters.skillKeywords"
+              placeholder="技能关键词"
+            />
+            <el-select
+              v-model="favoriteResumeFilters.jobId"
+              placeholder="关联职位"
+              clearable
+            >
+              <el-option
+                v-for="job in jobs"
+                :key="job.jobId"
+                :label="job.jobName"
+                :value="job.jobId"
+              />
+            </el-select>
+            <el-button type="primary" @click="searchFavoriteResumeLibrary">
+              搜索收藏夹
+            </el-button>
+            <el-button @click="loadFavoriteResumes">重置</el-button>
+            <el-button type="success" @click="exportSelectedResumes('PDF')">
+              批量导出 PDF
+            </el-button>
+            <el-button @click="exportSelectedResumes('EXCEL')">
+              批量导出 Excel
+            </el-button>
+          </div>
+          <el-table
+            :data="favoriteResumes"
+            stripe
+            @selection-change="handleFavoriteSelectionChange"
+          >
+            <el-table-column type="selection" width="48" />
+            <el-table-column prop="candidateName" label="候选人" />
+            <el-table-column prop="expectPosition" label="期望职位" />
+            <el-table-column prop="education" label="学历" width="120" />
+            <el-table-column prop="school" label="学校" />
+            <el-table-column prop="major" label="专业" />
+            <el-table-column label="来源" width="120">
+              <template #default="{ row }">
+                {{ row.applied ? "投递/已收藏" : "收藏" }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="200">
+              <template #default="{ row }">
+                <el-button
+                  text
+                  type="primary"
+                  @click="openResume(row.resumeId)"
+                >
+                  查看
+                </el-button>
+                <el-button
+                  text
+                  type="danger"
+                  @click="toggleFavoriteResume(row.resumeId)"
+                >
+                  取消收藏
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -423,6 +505,13 @@
         </div>
         <el-button type="primary" @click="downloadResumePdfFromEnterprise">
           导出简历 PDF
+        </el-button>
+        <el-button
+          @click="toggleFavoriteResume(resumeDetail.resumeId as number)"
+        >
+          {{
+            isFavoriteResume(resumeDetail.resumeId) ? "取消收藏" : "收藏简历"
+          }}
         </el-button>
       </template>
     </el-dialog>
@@ -473,6 +562,16 @@
         <pre>{{ JSON.stringify(talentDetail.educationList, null, 2) }}</pre>
         <h4>技能标签</h4>
         <pre>{{ JSON.stringify(talentDetail.skillList, null, 2) }}</pre>
+        <el-button
+          type="primary"
+          @click="toggleFavoriteResume(talentDetail.resumeId as number)"
+        >
+          {{
+            isFavoriteResume(talentDetail.resumeId as number)
+              ? "取消收藏"
+              : "收藏简历"
+          }}
+        </el-button>
       </div>
     </el-dialog>
 
@@ -511,6 +610,7 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, UploadRequestOptions } from "element-plus";
 import { useRouter } from "vue-router";
 import {
+  batchExportEnterpriseResumes,
   contactEnterpriseTalent,
   createEnterpriseInterview,
   createEnterpriseJob,
@@ -518,6 +618,8 @@ import {
   downloadGeneratedFile,
   exportEnterpriseResumePdf,
   exportStatistics,
+  favoriteEnterpriseResume,
+  listFavoriteEnterpriseResumes,
   listEnterpriseInterviews,
   previewEnterpriseJob,
   refreshEnterpriseJob,
@@ -529,9 +631,11 @@ import {
   listEnterpriseApplies,
   listEnterpriseJobs,
   offlineEnterpriseJob,
+  searchFavoriteEnterpriseResumes,
   searchEnterpriseTalents,
   getEnterpriseTalentDetail,
   submitEnterpriseAuth,
+  unfavoriteEnterpriseResume,
   uploadCommonFile,
   updateEnterpriseApplyStatus,
   updateEnterpriseInfo,
@@ -590,12 +694,27 @@ interface TalentRecord {
   major: string;
 }
 
+interface FavoriteResumeRecord {
+  resumeId: number;
+  title: string;
+  candidateName: string;
+  education: string;
+  school: string;
+  major: string;
+  expectPosition: string;
+  expectCity: string;
+  favorited: boolean;
+  applied: boolean;
+}
+
 interface ResumeDetail {
   resumeId?: number;
   basicInfo?: Record<string, unknown>;
   jobIntention?: Record<string, unknown>;
   educationList?: unknown[];
+  skillList?: unknown[];
   selfEvaluation?: string;
+  favorited?: boolean;
 }
 
 interface EnterpriseJobForm {
@@ -646,6 +765,8 @@ const jobs = ref<EnterpriseJobRecord[]>([]);
 const applications = ref<EnterpriseApplyRecord[]>([]);
 const interviews = ref<InterviewRecord[]>([]);
 const talents = ref<TalentRecord[]>([]);
+const favoriteResumes = ref<FavoriteResumeRecord[]>([]);
+const selectedFavoriteResumeIds = ref<number[]>([]);
 const resumeVisible = ref(false);
 const interviewVisible = ref(false);
 const talentVisible = ref(false);
@@ -682,6 +803,12 @@ const talentFilters = reactive({
   keyword: "",
   major: "",
   expectCity: "",
+});
+const favoriteResumeFilters = reactive({
+  major: "",
+  education: "",
+  skillKeywords: "",
+  jobId: undefined as number | undefined,
 });
 const talentContactForm = reactive({
   jobId: 0,
@@ -832,6 +959,60 @@ async function loadTalents() {
   talents.value = data.list || [];
 }
 
+async function loadFavoriteResumes() {
+  const data = await listFavoriteEnterpriseResumes({
+    pageNum: 1,
+    pageSize: 20,
+  });
+  favoriteResumes.value = data.list || [];
+}
+
+async function searchFavoriteResumeLibrary() {
+  const data = await searchFavoriteEnterpriseResumes({
+    pageNum: 1,
+    pageSize: 20,
+    ...favoriteResumeFilters,
+  });
+  favoriteResumes.value = data.list || [];
+}
+
+function handleFavoriteSelectionChange(rows: FavoriteResumeRecord[]) {
+  selectedFavoriteResumeIds.value = rows.map((item) => item.resumeId);
+}
+
+function isFavoriteResume(resumeId?: number) {
+  if (!resumeId) {
+    return false;
+  }
+  return favoriteResumes.value.some((item) => item.resumeId === resumeId);
+}
+
+async function toggleFavoriteResume(resumeId: number) {
+  if (isFavoriteResume(resumeId)) {
+    await unfavoriteEnterpriseResume(resumeId);
+    ElMessage.success("已取消收藏");
+  } else {
+    await favoriteEnterpriseResume(resumeId);
+    ElMessage.success("已加入收藏夹");
+  }
+  if (resumeDetail.value?.resumeId === resumeId) {
+    resumeDetail.value.favorited = !resumeDetail.value.favorited;
+  }
+  await loadFavoriteResumes();
+}
+
+async function exportSelectedResumes(format: "PDF" | "EXCEL") {
+  if (selectedFavoriteResumeIds.value.length === 0) {
+    ElMessage.warning("请先选择要导出的简历");
+    return;
+  }
+  const data = await batchExportEnterpriseResumes({
+    resumeIds: selectedFavoriteResumeIds.value,
+    format,
+  });
+  await downloadGeneratedFile(data.fileId, data.fileName);
+}
+
 async function handleStatus(applyId: number, status: string) {
   await updateEnterpriseApplyStatus(applyId, {
     status,
@@ -891,6 +1072,7 @@ async function submitTalentContact() {
 
 async function openResume(resumeId: number) {
   resumeDetail.value = await getEnterpriseResumeDetail(resumeId);
+  resumeDetail.value.favorited = isFavoriteResume(resumeId);
   resumeVisible.value = true;
 }
 
@@ -910,14 +1092,19 @@ function logout() {
 }
 
 onMounted(async () => {
-  await Promise.all([
-    loadEnterpriseInfo(),
-    loadJobs(),
-    loadApplications(),
-    loadInterviews(),
-    loadTalents(),
-    loadStatistics(),
-  ]);
+  try {
+    await Promise.all([
+      loadEnterpriseInfo(),
+      loadJobs(),
+      loadApplications(),
+      loadInterviews(),
+      loadTalents(),
+      loadFavoriteResumes(),
+      loadStatistics(),
+    ]);
+  } catch (error) {
+    ElMessage.warning("企业工作台初始化失败，请确认登录状态和后端服务");
+  }
 });
 </script>
 

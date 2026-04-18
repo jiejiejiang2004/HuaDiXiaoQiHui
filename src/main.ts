@@ -50,6 +50,11 @@ window.addEventListener(
 window.addEventListener(
   "unhandledrejection",
   (event) => {
+    const handledReason = event.reason as { handled?: boolean } | undefined;
+    if (handledReason?.handled) {
+      event.preventDefault();
+      return;
+    }
     const reason = String(event.reason || "");
     if (
       reason.includes(
@@ -63,4 +68,14 @@ window.addEventListener(
   true
 );
 
-createApp(App).use(router).use(ElementPlus).mount("#app");
+const app = createApp(App);
+
+app.config.errorHandler = (error) => {
+  const handledError = error as { handled?: boolean } | undefined;
+  if (handledError?.handled) {
+    return;
+  }
+  nativeConsoleError(error);
+};
+
+app.use(router).use(ElementPlus).mount("#app");

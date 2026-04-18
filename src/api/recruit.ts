@@ -283,6 +283,28 @@ export function getEnterpriseResumeDetail(resumeId: number) {
   return http.get(`/enterprise/resumes/${resumeId}`);
 }
 
+export function favoriteEnterpriseResume(resumeId: number) {
+  return http.post(`/enterprise/resumes/${resumeId}/favorite`);
+}
+
+export function unfavoriteEnterpriseResume(resumeId: number) {
+  return http.delete(`/enterprise/resumes/${resumeId}/favorite`);
+}
+
+export function listFavoriteEnterpriseResumes(params: Record<string, unknown>) {
+  return http.get("/enterprise/resumes/favorites", { params });
+}
+
+export function searchFavoriteEnterpriseResumes(
+  params: Record<string, unknown>
+) {
+  return http.get("/enterprise/resumes/search", { params });
+}
+
+export function batchExportEnterpriseResumes(payload: Record<string, unknown>) {
+  return http.post("/enterprise/resumes/export", payload);
+}
+
 export function exportEnterpriseResumePdf(resumeId: number) {
   return http.get(`/enterprise/resumes/${resumeId}/export/pdf`);
 }
@@ -411,4 +433,15 @@ export function deleteSystemNotice(noticeId: number) {
 
 export function listAuditLogs(params: Record<string, unknown>) {
   return http.get("/admin/system/logs/audit", { params });
+}
+
+export function listOperationLogs(params: Record<string, unknown>) {
+  return http.get("/admin/system/logs/operation", { params });
+}
+
+export function moderateResumeAdmin(
+  resumeId: number,
+  payload: Record<string, unknown>
+) {
+  return http.put(`/admin/audit/resumes/${resumeId}/moderate`, payload);
 }

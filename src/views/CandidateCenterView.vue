@@ -602,15 +602,19 @@ function logout() {
 }
 
 onMounted(async () => {
-  await Promise.all([
-    loadProfile(),
-    loadResume(),
-    loadApplies(),
-    loadMessages(),
-    refreshUnreadCount(),
-    loadFavoriteJobs(),
-    loadStatistics(),
-  ]);
+  try {
+    await Promise.all([
+      loadProfile(),
+      loadResume(),
+      loadApplies(),
+      loadMessages(),
+      refreshUnreadCount(),
+      loadFavoriteJobs(),
+      loadStatistics(),
+    ]);
+  } catch (error) {
+    ElMessage.warning("个人中心初始化失败，请确认登录状态和后端服务");
+  }
 });
 </script>
 

@@ -439,6 +439,33 @@
         </el-table>
       </el-tab-pane>
 
+      <el-tab-pane label="操作日志" name="operation-log">
+        <div class="toolbar">
+          <el-input
+            v-model="operationLogQuery.userId"
+            placeholder="操作人ID"
+            clearable
+          />
+          <el-input
+            v-model="operationLogQuery.action"
+            placeholder="动作类型"
+            clearable
+          />
+          <el-button type="primary" @click="loadOperationLogList"
+            >查询</el-button
+          >
+        </div>
+        <el-table :data="operationLogs" stripe>
+          <el-table-column prop="userId" label="用户ID" width="100" />
+          <el-table-column prop="userName" label="操作人" width="120" />
+          <el-table-column prop="action" label="动作" width="180" />
+          <el-table-column prop="resource" label="资源" width="180" />
+          <el-table-column prop="detail" label="说明" />
+          <el-table-column prop="ip" label="IP" width="140" />
+          <el-table-column prop="createTime" label="时间" width="180" />
+        </el-table>
+      </el-tab-pane>
+
       <el-tab-pane label="统计分析" name="statistics">
         <div class="toolbar">
           <el-button type="primary" @click="loadPlatformStats"
@@ -522,6 +549,38 @@
             candidateDetail.resumeCount
           }}</el-descriptions-item>
         </el-descriptions>
+        <el-divider>简历治理</el-divider>
+        <el-table :data="candidateDetail.resumes || []" stripe>
+          <el-table-column prop="resumeId" label="简历ID" width="100" />
+          <el-table-column prop="title" label="标题" />
+          <el-table-column prop="privacy" label="隐私" width="120" />
+          <el-table-column label="违规检测" width="220">
+            <template #default="{ row }">
+              <span v-if="row.violationDetected" class="danger-text">
+                命中: {{ (row.violationKeywords || []).join(" / ") }}
+              </span>
+              <span v-else>未发现</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="180">
+            <template #default="{ row }">
+              <el-button
+                text
+                type="primary"
+                @click="runSafely(() => detectResumeViolation(row.resumeId))"
+              >
+                检测
+              </el-button>
+              <el-button
+                text
+                type="danger"
+                @click="runSafely(() => cleanResumeViolation(row.resumeId))"
+              >
+                清理
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
       </template>
     </el-dialog>
   </div>
@@ -555,8 +614,10 @@ import {
   listCategoriesAdmin,
   listEnterprisesAdmin,
   listMessageTemplatesAdmin,
+  listOperationLogs,
   listPermissionsAdmin,
   listRolesAdmin,
+  moderateResumeAdmin,
   updateMessageTemplateAdmin,
   updateCandidateStatus,
   updateEnterpriseStatusAdmin,
@@ -641,6 +702,17 @@ interface AuditLogRecord {
   createTime: string;
 }
 
+interface OperationLogRecord {
+  logId: number;
+  userId: number;
+  userName: string;
+  action: string;
+  resource: string;
+  detail?: string;
+  ip?: string;
+  createTime: string;
+}
+
 const router = useRouter();
 const activeTab = ref("candidate");
 const candidates = ref<CandidateRecord[]>([]);
@@ -653,6 +725,7 @@ const permissions = ref<PermissionRecord[]>([]);
 const roles = ref<RoleRecord[]>([]);
 const messageTemplates = ref<MessageTemplateRecord[]>([]);
 const auditLogs = ref<AuditLogRecord[]>([]);
+const operationLogs = ref<OperationLogRecord[]>([]);
 const candidateDetailVisible = ref(false);
 const candidateDetail = ref<Record<string, unknown> | null>(null);
 const bannerPreview = ref("");
@@ -715,6 +788,10 @@ const roleForm = reactive({
   permissionIds: [] as number[],
   remark: "",
   status: "ACTIVE",
+});
+const operationLogQuery = reactive({
+  userId: "",
+  action: "",
 });
 
 async function loadCandidates() {
@@ -948,6 +1025,48 @@ async function loadAuditLogList() {
   auditLogs.value = data.list || [];
 }
 
+async function loadOperationLogList() {
+  const data = await listOperationLogs({
+    userId: operationLogQuery.userId || undefined,
+    action: operationLogQuery.action || undefined,
+    pageNum: 1,
+    pageSize: 20,
+  });
+  operationLogs.value = data.list || [];
+}
+
+async function detectResumeViolation(resumeId: number) {
+  const data = await moderateResumeAdmin(resumeId, {
+    action: "DETECT",
+    reason: "管理员手动检测",
+  });
+  ElMessage.info(
+    data.violationDetected
+      ? `检测到违规关键词: ${(data.keywords || []).join(" / ")}`
+      : "未发现违规内容"
+  );
+  if (candidateDetail.value?.userId) {
+    await openCandidateDetail(candidateDetail.value.userId as number);
+  }
+}
+
+async function cleanResumeViolation(resumeId: number) {
+  const data = await moderateResumeAdmin(resumeId, {
+    action: "CLEAN",
+    reason: "管理员手动清理",
+  });
+  ElMessage.success(
+    data.violationDetected
+      ? "违规简历已清理并转为私密"
+      : "简历已复核，未发现违规"
+  );
+  if (candidateDetail.value?.userId) {
+    await openCandidateDetail(candidateDetail.value.userId as number);
+  }
+  await loadOperationLogList();
+  await loadAuditLogList();
+}
+
 async function loadPlatformStats() {
   const data = await getPlatformOverviewStatistics();
   platformStats.candidateCount = data.candidateCount || 0;
@@ -988,6 +1107,7 @@ watch(
     }
     if (tab === "message-template") await loadMessageTemplates();
     if (tab === "audit-log") await loadAuditLogList();
+    if (tab === "operation-log") await loadOperationLogList();
     if (tab === "statistics") await loadPlatformStats();
   },
   { immediate: false }
@@ -1006,6 +1126,7 @@ onMounted(async () => {
       loadRoles(),
       loadMessageTemplates(),
       loadAuditLogList(),
+      loadOperationLogList(),
       loadPlatformStats(),
     ]);
   } catch (error) {
@@ -1073,6 +1194,10 @@ onMounted(async () => {
   margin: 8px 0 0;
   color: #6b7280;
   word-break: break-all;
+}
+
+.danger-text {
+  color: #dc2626;
 }
 
 .stat-card {
