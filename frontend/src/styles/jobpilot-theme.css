@@ -23,6 +23,8 @@
   --jb-shadow-md: 0 16px 40px -20px rgba(15, 23, 42, 0.12);
   --jb-shadow-card: 0 4px 20px rgba(15, 23, 42, 0.06);
   --jb-font: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  /** 与顶栏占位一致，侧栏 sticky / 高度计算用 */
+  --app-header-height: 56px;
 
   --el-color-primary: #0a65cc;
   --el-color-primary-light-3: #3d84d6;
@@ -33,12 +35,21 @@
   --el-color-primary-dark-2: #084f9f;
 }
 
+html {
+  /* 避免内容高度变化时纵向滚动条显隐导致整页（顶栏、居中布局）横向微移 */
+  scrollbar-gutter: stable;
+}
+
 html,
 body,
 #app {
   font-family: var(--jb-font);
   background: var(--jb-bg-page);
   color: var(--jb-text);
+}
+
+body {
+  overflow-x: hidden;
 }
 
 .el-button--large {

@@ -145,6 +145,39 @@
 
 ---
 
+## 7. 求职者个人中心（`CandidateCenterView` · Swan 风格对齐）
+
+**路径**：`frontend/src/views/CandidateCenterView.vue`  
+**路由**：`/candidate`（`AppShell` 内全屏内容区，无顶栏重复）
+
+### 职责与 Tab
+
+| Tab | 内容要点 |
+|-----|----------|
+| 概览 | 投递/收藏统计卡片、子指标、投递热力图（`GET /statistics/candidate` → `applyTrend`） |
+| 个人资料 | 分区表单：**账号信息**（姓名、手机只读）、**学业与联络**（邮箱、城市、学校、专业）；说明文案 + `candidate-form-section` 分隔 |
+| 我的简历 | 卡片头：默认 / PDF / 删除 / 保存；正文分区：**简历标题**、**基本信息**（含性别、出生日期、现居城市）、**求职意向**（含期望薪资数字）、**教育经历**（含起止时间）、**隐私与附件**、**自我评价** |
+| 投递记录 | 表格式自定义列表：公司首字、职位、类型标签、地点与薪资、投递时间、状态（灰叹号 / 绿勾 / 红叉）、查看详情；行 hover 高亮 |
+| 消息中心 | 消息卡片：类型标签（面试邀约 / 投递通知 / 系统通知等）、关联职位块（可选字段）、正文；未读为带描边强调；详见接口说明（`GET /messages` 可扩展 `job*`） |
+| 收藏职位 | 与投递记录同构列表 |
+
+### 设计约定（与 Swan 一致）
+
+- 主标题：`#0f172a`、字重 800；副文案：`#64748b`（`.candidate-panel__desc`、`.candidate-form-section__hint`）。
+- 卡片容器：`candidate-card` + Element `el-card`，与首页职位区同样使用 `--jb-border`、`--jb-shadow-sm`、`--jb-radius-md`。
+- 表单分区：`.candidate-form-stack` / `.candidate-form-section` / `__title` / `__hint`，浅分割线 `#f1f5f9`，避免在卡片内再套一层粗边框（与消息列表「仅外层一层框」原则一致）。
+- 职位相关展示（投递/收藏/消息内职位块）：与 `SwanJobCard` 同类信息层级（标题、公司、地点、薪资、小标签）。
+
+### 相关接口（摘录）
+
+- 资料：`GET/PATCH /profile`（或项目内 `getProfile` / `updateProfile`）
+- 简历：`listResumes`、`getResumeDetail`、`updateResume`、`createResume` 等
+- 投递：`GET /apply/my`
+- 收藏：`GET /jobs/favorites`
+- 消息：`GET /messages`、`GET /messages/:id`（列表项含 `type`、`bizId`；职位扩展字段见后端/Mock 约定）
+
+---
+
 ## 建议的迭代顺序（「一个一个慢慢改」）
 
 1. **`jobpilot-theme.css`**：色板、圆角、阴影 — 影响全站  
@@ -155,3 +188,11 @@
 6. **`SwanSiteFooter.vue`**：最后收尾  
 
 每改完一个组件，在本文档对应小节补一行 **变更记录（日期 + 摘要）** 即可。
+
+---
+
+## 变更记录
+
+| 日期 | 摘要 |
+|------|------|
+| 2026-04 | 新增 **§7 求职者个人中心**：投递/收藏列表、消息卡片、个人资料与简历分区表单与 Swan 主题对齐；更新 `README.md` 目录说明。 |

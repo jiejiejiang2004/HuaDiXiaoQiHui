@@ -191,8 +191,22 @@ export function getEnterpriseAuthStatus() {
   return http.get("/enterprise/auth/status");
 }
 
+/** 与 GET /statistics/candidate 中「按日投递」列表一致，供概览热力图使用 */
+export interface CandidateApplyTrendDay {
+  day: string;
+  count: number;
+}
+
+export interface CandidateStatistics {
+  applyCount?: number;
+  interviewCount?: number;
+  viewedCount?: number;
+  favoriteCount?: number;
+  applyTrend?: CandidateApplyTrendDay[];
+}
+
 export function getCandidateStatistics() {
-  return http.get("/statistics/candidate");
+  return http.get<CandidateStatistics>("/statistics/candidate");
 }
 
 export function getEnterpriseStatistics() {

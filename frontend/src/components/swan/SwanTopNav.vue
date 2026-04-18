@@ -114,6 +114,10 @@ watch(
   position: sticky;
   top: 0;
   z-index: 100;
+  box-sizing: border-box;
+  height: var(--app-header-height, 56px);
+  min-height: var(--app-header-height, 56px);
+  flex-shrink: 0;
   background: var(--jp-nav-bg, #f1f2f4);
   border-bottom: 1px solid var(--jp-nav-border, #e5e7eb);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
@@ -123,12 +127,13 @@ watch(
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 24px;
+  height: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-wrap: nowrap;
   align-items: stretch;
   justify-content: space-between;
   gap: 12px;
-  min-height: 52px;
 }
 
 .swan-top-nav__brand {
@@ -205,7 +210,6 @@ watch(
   .swan-top-nav__inner {
     padding: 0 16px;
     gap: 8px;
-    min-height: 48px;
   }
 
   .swan-top-nav__mark {
