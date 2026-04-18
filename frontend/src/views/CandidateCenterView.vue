@@ -1,37 +1,25 @@
 <template>
-  <div class="candidate-shell">
-    <aside class="candidate-sidebar" aria-label="求职者导航">
-      <p class="candidate-sidebar__label">求职者工作台</p>
-      <nav class="candidate-nav">
-        <button
-          v-for="item in tabItems"
-          :key="item.key"
-          type="button"
-          class="candidate-nav__item"
-          :class="{ 'candidate-nav__item--active': activeTab === item.key }"
-          @click="selectTab(item.key)"
-        >
-          {{ item.label }}
-        </button>
-      </nav>
-      <div class="candidate-sidebar__foot">
-        <button type="button" class="candidate-nav__logout" @click="logout">
-          退出登录
-        </button>
-      </div>
-    </aside>
+  <div class="workbench-shell">
+    <WorkbenchSidebar
+      brand-label="求职者工作台"
+      :tabs="tabItems"
+      :active-key="activeTab"
+      nav-panel-id="candidate-nav-panel"
+      aria-label="求职者导航"
+      @select="onWorkbenchSelect"
+      @logout="logout"
+    />
 
-    <div class="candidate-main">
-      <header class="candidate-main__top">
-        <h1 class="candidate-main__hello">你好，{{ displayName }}</h1>
-        <p class="candidate-main__sub">在这里管理个人资料、简历、投递与消息</p>
+    <div class="workbench-main">
+      <header class="workbench-main__top">
+        <h1 class="workbench-main__hello">你好，{{ displayName }}</h1>
+        <p class="workbench-main__sub">在这里管理个人资料、简历、投递与消息</p>
       </header>
 
-      <div class="candidate-panels">
+      <div class="workbench-panels">
         <!-- 概览 -->
         <section
           v-show="activeTab === 'overview'"
-          class="candidate-panel"
           aria-labelledby="panel-overview"
         >
           <h2 id="panel-overview" class="sr-only">概览</h2>
@@ -69,7 +57,7 @@
               <span class="overview-substat__label">简历被查看</span>
             </div>
           </div>
-          <el-card shadow="never" class="candidate-card">
+          <el-card shadow="never" class="workbench-card">
             <template #header>
               <div class="card-title">
                 <span>投递趋势</span>
@@ -144,14 +132,13 @@
         <!-- 个人资料 -->
         <section
           v-show="activeTab === 'profile'"
-          class="candidate-panel"
           aria-labelledby="panel-profile"
         >
-          <h2 id="panel-profile" class="candidate-panel__title">个人资料</h2>
-          <p class="candidate-panel__desc">
+          <h2 id="panel-profile" class="workbench-panel__title">个人资料</h2>
+          <p class="workbench-panel__desc">
             完善学业与联络信息，便于企业联系；姓名与手机与账号一致，仅可查看。
           </p>
-          <el-card shadow="never" class="candidate-card">
+          <el-card shadow="never" class="workbench-card">
             <el-form label-position="top" :model="profileForm">
               <div class="candidate-form-stack">
                 <div class="candidate-form-section">
@@ -226,16 +213,12 @@
         </section>
 
         <!-- 我的简历 -->
-        <section
-          v-show="activeTab === 'resume'"
-          class="candidate-panel"
-          aria-labelledby="panel-resume"
-        >
-          <h2 id="panel-resume" class="candidate-panel__title">我的简历</h2>
-          <p class="candidate-panel__desc">
+        <section v-show="activeTab === 'resume'" aria-labelledby="panel-resume">
+          <h2 id="panel-resume" class="workbench-panel__title">我的简历</h2>
+          <p class="workbench-panel__desc">
             在线编辑简历内容；样式与投递记录、职位卡片一致，使用圆角与主色变量。
           </p>
-          <el-card shadow="never" class="candidate-card">
+          <el-card shadow="never" class="workbench-card">
             <template #header>
               <div class="card-title">
                 <div class="card-title__text">
@@ -507,16 +490,15 @@
         <!-- 投递记录 -->
         <section
           v-show="activeTab === 'applications'"
-          class="candidate-panel"
           aria-labelledby="panel-applications"
         >
-          <h2 id="panel-applications" class="candidate-panel__title">
+          <h2 id="panel-applications" class="workbench-panel__title">
             投递记录
-            <span class="candidate-panel__count"
+            <span class="workbench-panel__count"
               >（{{ applyList.length }}）</span
             >
           </h2>
-          <el-card shadow="never" class="candidate-card">
+          <el-card shadow="never" class="workbench-card">
             <template v-if="applyList.length">
               <div
                 class="candidate-job-list"
@@ -663,11 +645,10 @@
         <!-- 消息中心 -->
         <section
           v-show="activeTab === 'messages'"
-          class="candidate-panel"
           aria-labelledby="panel-messages"
         >
-          <h2 id="panel-messages" class="candidate-panel__title">消息中心</h2>
-          <el-card shadow="never" class="candidate-card">
+          <h2 id="panel-messages" class="workbench-panel__title">消息中心</h2>
+          <el-card shadow="never" class="workbench-card">
             <template #header>
               <div class="card-title">
                 <span>站内消息</span>
@@ -793,16 +774,15 @@
         <!-- 收藏职位 -->
         <section
           v-show="activeTab === 'favorites'"
-          class="candidate-panel"
           aria-labelledby="panel-favorites"
         >
-          <h2 id="panel-favorites" class="candidate-panel__title">
+          <h2 id="panel-favorites" class="workbench-panel__title">
             收藏职位
-            <span class="candidate-panel__count"
+            <span class="workbench-panel__count"
               >（{{ favoriteJobs.length }}）</span
             >
           </h2>
-          <el-card shadow="never" class="candidate-card">
+          <el-card shadow="never" class="workbench-card">
             <template v-if="favoriteJobs.length">
               <div
                 class="candidate-job-list"
@@ -1067,6 +1047,7 @@ import {
   uploadCommonFile,
 } from "@/api/recruit";
 import { clearAuth, getUserName } from "@/utils/auth";
+import WorkbenchSidebar from "@/components/workbench/WorkbenchSidebar.vue";
 
 /** 与 .apply-heatmap 样式一致：格子宽 + 列间距 */
 const HEATMAP_CELL_PX = 11;
@@ -1169,6 +1150,12 @@ function isCandidateTab(s: string): s is CandidateTab {
 function selectTab(key: CandidateTab) {
   activeTab.value = key;
   router.replace({ path: "/candidate", query: { tab: key } });
+}
+
+function onWorkbenchSelect(key: string) {
+  if (isCandidateTab(key)) {
+    selectTab(key);
+  }
 }
 
 watch(
@@ -1827,174 +1814,6 @@ onUnmounted(() => {
   border: 0;
 }
 
-.candidate-shell {
-  display: flex;
-  align-items: flex-start;
-  width: 100%;
-  max-width: 1320px;
-  margin: 0 auto;
-  min-height: calc(100vh - var(--app-header-height, 56px));
-  background: #fff;
-}
-
-.candidate-sidebar {
-  position: sticky;
-  /* 滚动容器为 AppShell 的 main，此处相对 main 视口贴顶 */
-  top: 0;
-  z-index: 20;
-  width: 248px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-self: flex-start;
-  height: calc(100vh - var(--app-header-height, 56px));
-  min-height: calc(100vh - var(--app-header-height, 56px));
-  max-height: calc(100vh - var(--app-header-height, 56px));
-  overflow: hidden;
-  background: #fff;
-  border-right: 1px solid #d8dde3;
-  padding: 20px 0 16px;
-  box-sizing: border-box;
-}
-
-.candidate-sidebar__label {
-  flex-shrink: 0;
-  margin: 0 20px 14px;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: #94a3b8;
-  text-transform: uppercase;
-}
-
-.candidate-nav {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding: 0;
-  overflow-y: auto;
-  scrollbar-gutter: stable;
-}
-
-.candidate-nav__item {
-  display: block;
-  width: 100%;
-  padding: 12px 16px;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  color: #334155;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease;
-  font-family: inherit;
-  border-left: 3px solid transparent;
-}
-
-.candidate-nav__item:hover {
-  background: #f3f5f7;
-  color: #146bce;
-}
-
-.candidate-nav__item--active {
-  background: #e7f0fa;
-  color: #146bce;
-  font-weight: 600;
-  border-left-color: #146bce;
-}
-
-.candidate-sidebar__foot {
-  flex-shrink: 0;
-  padding: 12px 0 0;
-  margin-top: auto;
-  border-top: 1px solid #d8dde3;
-}
-
-.candidate-nav__logout {
-  display: block;
-  width: 100%;
-  padding: 12px 16px;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  color: #64748b;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.12s ease, color 0.12s ease;
-  text-align: left;
-}
-
-.candidate-nav__logout:hover {
-  background: #fef2f2;
-  color: #dc2626;
-}
-
-.candidate-main {
-  flex: 1;
-  min-width: 0;
-  padding: 24px 28px 40px;
-}
-
-.candidate-main__top {
-  margin-bottom: 24px;
-}
-
-.candidate-main__hello {
-  margin: 0 0 6px;
-  font-size: 1.5rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: #0f172a;
-}
-
-.candidate-main__sub {
-  margin: 0;
-  font-size: 0.9375rem;
-  color: #64748b;
-}
-
-.candidate-main :deep(.el-input__wrapper),
-.candidate-main :deep(.el-textarea__inner),
-.candidate-main :deep(.el-select .el-input__wrapper) {
-  border-radius: var(--jb-radius-sm, 4px) !important;
-}
-
-.candidate-main :deep(.el-button) {
-  border-radius: var(--jb-radius-sm, 4px) !important;
-}
-
-.candidate-panels {
-  min-height: 320px;
-}
-
-.candidate-panel__title {
-  margin: 0 0 16px;
-  font-size: 1.125rem;
-  font-weight: 800;
-  color: #0f172a;
-}
-
-.candidate-panel__count {
-  margin-left: 4px;
-  font-weight: 600;
-  font-size: 0.95em;
-  color: #64748b;
-}
-
-.candidate-panel__desc {
-  margin: -6px 0 18px;
-  max-width: 720px;
-  font-size: 0.9375rem;
-  line-height: 1.55;
-  color: #64748b;
-}
-
 .candidate-form-stack {
   display: flex;
   flex-direction: column;
@@ -2426,126 +2245,6 @@ onUnmounted(() => {
   border-top: 1px solid #f1f5f9;
 }
 
-.overview-hero {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.overview-card {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 22px 24px;
-  border-radius: var(--jb-radius-md, 4px);
-  overflow: hidden;
-  color: #0f172a;
-  border: 1px solid var(--jb-border, #e5e7eb);
-  box-shadow: var(--jb-shadow-sm, 0 1px 3px rgba(15, 23, 42, 0.06));
-}
-
-.overview-card--blue {
-  background: #e7f0fa;
-  border-color: rgba(20, 107, 206, 0.12);
-}
-
-.overview-card--amber {
-  background: #fff6e6;
-  border-color: rgba(180, 83, 9, 0.15);
-}
-
-.overview-card__value {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  color: #0f172a;
-}
-
-.overview-card__label {
-  margin: 6px 0 0;
-  font-size: 0.875rem;
-  color: #64748b;
-}
-
-.overview-card__badge {
-  width: 52px;
-  height: 52px;
-  border-radius: var(--jb-radius-md, 4px);
-  flex-shrink: 0;
-  background-color: #fff;
-  background-repeat: no-repeat;
-  background-position: center;
-  border: 1px solid var(--jb-border, #e5e7eb);
-  box-shadow: var(--jb-shadow-sm, 0 1px 3px rgba(15, 23, 42, 0.06));
-}
-
-.overview-card__badge--blue {
-  background-size: 28px 28px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23146bce' stroke-width='2'%3E%3Crect x='4' y='7' width='16' height='12' rx='2'/%3E%3Cpath d='M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2'/%3E%3C/svg%3E");
-  border-color: rgba(20, 107, 206, 0.18);
-}
-
-.overview-card__badge--amber {
-  background-size: 26px 26px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d97706' stroke-width='2'%3E%3Cpath d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E");
-  border-color: rgba(217, 119, 6, 0.22);
-}
-
-.overview-substats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.overview-substat {
-  padding: 16px 18px;
-  background: #fff;
-  border: 1px solid #d8dde3;
-  border-radius: var(--jb-radius-md, 4px);
-  box-shadow: var(--jb-shadow-sm, 0 1px 3px rgba(15, 23, 42, 0.06));
-}
-
-.overview-substat__value {
-  display: block;
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: #0f172a;
-}
-
-.overview-substat__label {
-  display: block;
-  margin-top: 4px;
-  font-size: 0.8125rem;
-  color: #64748b;
-}
-
-.candidate-card {
-  border-radius: var(--jb-radius-md, 4px) !important;
-  border: 1px solid var(--jb-border, #e5e7eb) !important;
-  box-shadow: var(--jb-shadow-sm, 0 1px 3px rgba(15, 23, 42, 0.06)) !important;
-}
-
-.candidate-card :deep(.el-card) {
-  border-radius: var(--jb-radius-md, 4px) !important;
-  box-shadow: var(--jb-shadow-sm, 0 1px 3px rgba(15, 23, 42, 0.06)) !important;
-}
-
-.candidate-card :deep(.el-card__header) {
-  padding: 14px 18px;
-  border-bottom: 1px solid #d8dde3;
-  border-radius: var(--jb-radius-md, 4px) var(--jb-radius-md, 4px) 0 0 !important;
-}
-
-.candidate-card :deep(.el-card__body) {
-  padding: 18px;
-  border-radius: 0 0 var(--jb-radius-md, 4px) var(--jb-radius-md, 4px) !important;
-}
-
 .card-title {
   display: flex;
   justify-content: space-between;
@@ -2747,80 +2446,6 @@ onUnmounted(() => {
   margin-top: 18px;
   padding-top: 14px;
   border-top: 1px solid #f1f5f9;
-}
-
-@media (max-width: 960px) {
-  .candidate-shell {
-    flex-direction: column;
-    align-items: stretch;
-    min-height: auto;
-  }
-
-  .candidate-sidebar {
-    position: static;
-    top: auto;
-    z-index: auto;
-    height: auto;
-    min-height: 0;
-    max-height: none;
-    overflow: visible;
-    align-self: stretch;
-    width: 100%;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    padding: 12px 0 8px;
-    border-right: none;
-    border-bottom: 1px solid #d8dde3;
-  }
-
-  .candidate-sidebar__label {
-    width: 100%;
-    margin: 0 16px 8px;
-  }
-
-  .candidate-nav {
-    flex: 1 1 auto;
-    min-height: 0;
-    flex-direction: row;
-    flex-wrap: wrap;
-    overflow: visible;
-    padding: 0 8px;
-    gap: 0;
-  }
-
-  .candidate-nav__item {
-    flex: 1 1 auto;
-    min-width: calc(50% - 0px);
-    text-align: left;
-    padding: 10px 12px;
-    font-size: 0.8125rem;
-    border-left: 3px solid transparent;
-  }
-
-  .candidate-nav__item--active {
-    border-left-color: #146bce;
-  }
-
-  .candidate-sidebar__foot {
-    width: 100%;
-    margin-top: 8px;
-    padding: 8px 8px 0;
-    border-top: 1px solid #d8dde3;
-    flex-shrink: 0;
-  }
-
-  .candidate-nav__logout {
-    text-align: center;
-  }
-
-  .candidate-main {
-    padding: 20px 16px 32px;
-  }
-
-  .overview-hero {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 520px) {

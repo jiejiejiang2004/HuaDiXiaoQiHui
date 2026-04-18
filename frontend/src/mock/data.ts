@@ -986,6 +986,8 @@ export const MOCK_ENTERPRISE_JOBS = [
     status: "RECRUITING",
     applyCount: 6,
     publishTime: "2026-04-01 10:00:00",
+    jobCategory: "全职",
+    recruitEndDate: "2026-05-15",
   },
   {
     jobId: 904,
@@ -993,6 +995,17 @@ export const MOCK_ENTERPRISE_JOBS = [
     status: "PENDING",
     applyCount: 0,
     publishTime: "2026-04-17 14:30:00",
+    jobCategory: "全职",
+    recruitEndDate: "2026-06-01",
+  },
+  {
+    jobId: 905,
+    jobName: "前端开发实习生",
+    status: "OFFLINE",
+    applyCount: 12,
+    publishTime: "2026-03-10 09:00:00",
+    jobCategory: "实习",
+    recruitEndDate: "2026-04-10",
   },
 ];
 
