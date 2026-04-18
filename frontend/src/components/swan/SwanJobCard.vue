@@ -34,7 +34,9 @@
       <div class="swan-job-card__company-text">
         <p class="swan-job-card__company-name">{{ job.companyName }}</p>
         <p class="swan-job-card__location">
-          <span class="swan-job-card__pin" aria-hidden="true" />
+          <span class="swan-job-card__pin-badge" aria-hidden="true">
+            <span class="swan-job-card__pin" />
+          </span>
           {{ job.location }}
         </p>
       </div>
@@ -132,7 +134,8 @@ function companyInitial(name: string) {
 
 .swan-job-card:hover {
   box-shadow: var(--jb-shadow-md);
-  border-color: rgba(10, 101, 204, 0.22);
+  border-color: rgba(10, 101, 204, 0.18);
+  background: #fff;
 }
 
 .swan-job-card:focus-visible {
@@ -204,6 +207,11 @@ function companyInitial(name: string) {
 .swan-job-card--compact .swan-job-card__bookmark svg {
   width: 19px;
   height: 19px;
+}
+
+.swan-job-card--compact .swan-job-card__pin-badge {
+  width: 24px;
+  height: 24px;
 }
 
 .swan-job-card__title {
@@ -307,9 +315,24 @@ function companyInitial(name: string) {
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 0.8125rem;
   color: var(--jb-text-muted);
+}
+
+.swan-job-card__pin-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--jb-radius-sm);
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+}
+
+.swan-job-card:hover .swan-job-card__pin-badge {
+  background: var(--jb-primary);
 }
 
 .swan-job-card__pin {
@@ -320,6 +343,12 @@ function companyInitial(name: string) {
   background: currentColor;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Cpath d='M12 21s7-4.35 7-10a7 7 0 1 0-14 0c0 5.65 7 10 7 10z'/%3E%3Ccircle cx='12' cy='11' r='2.5'/%3E%3C/svg%3E")
     center / contain no-repeat;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.swan-job-card:hover .swan-job-card__pin {
+  background: #fff;
+  opacity: 1;
 }
 
 .swan-job-card__bookmark {
@@ -339,9 +368,23 @@ function companyInitial(name: string) {
   transition: color 0.15s ease, background 0.15s ease;
 }
 
+.swan-job-card:hover .swan-job-card__bookmark {
+  color: #fff;
+  background: var(--jb-primary);
+}
+
+.swan-job-card:hover .swan-job-card__bookmark svg path {
+  stroke: #fff;
+}
+
 .swan-job-card__bookmark:hover {
   color: var(--jb-primary);
   background: rgba(10, 101, 204, 0.08);
+}
+
+.swan-job-card:hover .swan-job-card__bookmark:hover {
+  color: #fff;
+  background: var(--jb-primary-hover);
 }
 
 .swan-job-card__bookmark--on {

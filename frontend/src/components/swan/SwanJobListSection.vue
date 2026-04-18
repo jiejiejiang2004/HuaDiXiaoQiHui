@@ -1,6 +1,6 @@
 <template>
   <section :id="sectionId" class="swan-job-list">
-    <div class="swan-job-list__head">
+    <div v-if="showHead" class="swan-job-list__head">
       <div class="swan-job-list__titles">
         <h2>{{ heading }}</h2>
         <p v-if="showSummary && !loading" class="swan-job-list__summary">
@@ -20,6 +20,7 @@
       class="swan-job-list__grid"
       :class="{
         'swan-job-list__grid--home-rows': layout === 'home-three-rows',
+        'swan-job-list__grid--three': gridPreset === 'three',
       }"
       v-loading="loading"
     >
@@ -59,6 +60,10 @@ withDefaults(
     viewAllTo?: string;
     showSummary?: boolean;
     selectable?: boolean;
+    /** 为 false 时不展示标题区（如求职页仅保留列表） */
+    showHead?: boolean;
+    /** 求职页等：固定三列栅格（响应式降为 2/1 列） */
+    gridPreset?: "default" | "three";
   }>(),
   {
     sectionId: "job-list",
@@ -66,6 +71,8 @@ withDefaults(
     layout: "list",
     showSummary: true,
     selectable: false,
+    showHead: true,
+    gridPreset: "default",
   }
 );
 
@@ -143,8 +150,24 @@ const emit = defineEmits<{
   gap: 20px;
 }
 
+.swan-job-list__grid--three {
+  grid-template-columns: repeat(3, 1fr);
+}
+
 .swan-job-list__grid--home-rows {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 236px), 1fr));
   gap: 14px;
+}
+
+@media (max-width: 1100px) {
+  .swan-job-list__grid--three {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .swan-job-list__grid--three {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
