@@ -1,0 +1,131 @@
+sequenceDiagram
+    participant Admin as 平台管理员
+    participant Controller as MessageAuditController
+    participant Service as MessageAuditService
+    participant Dao as MessageAuditDao
+    participant MsgService as MessageService
+    participant Filters as filters
+    participant StatusFilter as statusFilter
+
+    %% 查看待审核职位列表
+    Note over Admin, StatusFilter: 查看待审核职位列表
+    Admin->>Controller: 进入"职位审核"页面
+    activate Controller
+    Controller->>Service: getPendingJobs(pageNum, pageSize, filters)
+    activate Service
+    Service->>Dao: 查询status='PENDING'的职位
+    activate Dao
+    Note right of Dao: 筛选条件:<br/>- jobName: 职位名称<br/>- companyName: 企业名称<br/>- submitTime: 提交时间范围
+    Note right of Dao: 职位状态说明:<br/>- PENDING: 待审核<br/>- ACTIVE: 招聘中(已通过)<br/>- REJECTED: 已驳回<br/>- CLOSED: 已结束
+    Dao-->>Service: 返回职位列表
+    deactivate Dao
+    Service->>Dao: 关联查询企业信息
+    activate Dao
+    Dao-->>Service: 补充企业名称/联系人
+    deactivate Dao
+    Service-->>Controller: 返回待审核职位列表
+    deactivate Service
+    Controller-->>Admin: 展示职位审核列表(职位名称/企业/提交时间/操作)
+    deactivate Controller
+
+    %% 查看职位详情
+    Note over Admin, StatusFilter: 查看职位详情
+    Admin->>Controller: 点击职位查看详情
+    activate Controller
+    Controller->>Service: getJobDetailForAudit(jobId)
+    activate Service
+    Service->>Dao: 查询职位完整信息
+    activate Dao
+    Dao-->>Service: 返回职位信息
+    deactivate Dao
+    Service->>Dao: 查询企业信息
+    activate Dao
+    Dao-->>Service: 返回企业信息
+    deactivate Dao
+    Service->>Service: 检测敏感词(职位描述/任职要求)
+    Note right of Service: 敏感词检测:<br/>- 违法违规内容<br/>- 歧视性词汇<br/>- 虚假宣传
+    Service-->>Controller: 返回职位详情+敏感词标记
+    deactivate Service
+    Controller-->>Admin: 展示职位详情页(高亮显示敏感词)
+    deactivate Controller
+
+    %% 审核通过
+    Note over Admin, StatusFilter: 审核通过
+    Admin->>Controller: 点击"通过审核"
+    activate Controller
+    Controller->>Service: approveJob(jobId, remark)
+    activate Service
+    Service->>Dao: 校验职位状态仍为PENDING
+    activate Dao
+    Dao-->>Service: 状态正确
+    Service->>Dao: 更新status='ACTIVE'<br/>设置上线时间<br/>保存审核备注
+    Dao-->>Service: 更新成功
+    deactivate Dao
+    Service->>MsgService: 通知企业HR "职位已审核通过，已上线"
+    activate MsgService
+    MsgService-->>Service: 通知已发送
+    deactivate MsgService
+    Service-->>Controller: 审核通过
+    deactivate Service
+    Controller-->>Admin: 提示"职位已通过审核"<br/>刷新列表
+    deactivate Controller
+
+    %% 审核驳回
+    Note over Admin, StatusFilter: 审核驳回
+    Admin->>Controller: 填写驳回原因，点击"驳回"
+    activate Controller
+    Controller->>Service: rejectJob(jobId, reason)
+    activate Service
+    Service->>Dao: 校验职位状态仍为PENDING
+    activate Dao
+    Dao-->>Service: 状态正确
+    Service->>Dao: 更新status='REJECTED'<br/>保存驳回原因和审核备注
+    Note right of Dao: 驳回信息记录:<br/>- reject_reason: 驳回原因<br/>- audit_remark: 审核备注<br/>- audit_time: 审核时间
+    Dao-->>Service: 更新成功
+    deactivate Dao
+    Service->>MsgService: 通知企业HR 职位被驳回及驳回原因
+    activate MsgService
+    MsgService-->>Service: 通知已发送
+    deactivate MsgService
+    Service-->>Controller: 驳回成功
+    deactivate Service
+    Controller-->>Admin: 提示"职位已驳回"
+    deactivate Controller
+
+    %% 批量审核
+    Note over Admin, StatusFilter: 批量审核
+    Admin->>Controller: 勾选多个职位，选择"批量通过"
+    activate Controller
+    Controller->>Service: batchApproveJobs(jobIdList, remark)
+    activate Service
+    loop 遍历职位ID列表
+        Service->>Dao: 逐个更新状态为ACTIVE
+        activate Dao
+        Dao-->>Service: 更新成功
+        deactivate Dao
+    end
+    Service->>Service: 统计成功/失败数量
+    Service->>MsgService: 批量发送通知给各企业
+    activate MsgService
+    MsgService-->>Service: 通知已发送
+    deactivate MsgService
+    Service-->>Controller: 返回审核结果(成功X条，失败Y条)
+    deactivate Service
+    Controller-->>Admin: 展示批量审核结果
+    deactivate Controller
+
+    %% 查看已审核记录
+    Note over Admin, StatusFilter: 查看已审核记录
+    Admin->>Controller: 查看"已审核职位"列表
+    activate Controller
+    Controller->>Service: getAuditedJobs(pageNum, pageSize, statusFilter)
+    activate Service
+    Service->>Dao: 查询status IN ('ACTIVE', 'REJECTED')
+    activate Dao
+    Note right of Dao: 可筛选:<br/>- ACTIVE: 已通过<br/>- REJECTED: 已驳回
+    Dao-->>Service: 返回已审核职位列表
+    deactivate Dao
+    Service-->>Controller: 返回列表
+    deactivate Service
+    Controller-->>Admin: 展示已审核记录(可查看审核备注)
+    deactivate Controller

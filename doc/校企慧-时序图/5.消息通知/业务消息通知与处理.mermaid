@@ -1,0 +1,92 @@
+sequenceDiagram
+    participant User as 用户
+    participant Trigger as 业务触发点
+    participant MsgService as MessageService
+    participant MsgDao as MessageDao
+    participant NoticeCtrl as NoticeController
+    participant SMS as 短信接口
+
+    %% ==========================================
+    %% 1. 简历投递反馈
+    %% ==========================================
+    Note over Trigger, SMS: 简历投递反馈
+    Trigger->>MsgService: 发送简历投递状态通知
+    activate MsgService
+    MsgService->>MsgService: 构建消息<br/>"您投递的【Java开发工程师】已被企业查看"
+    MsgService->>MsgDao: 插入站内信记录
+    activate MsgDao
+    MsgDao-->>MsgService: 保存成功
+    deactivate MsgDao
+    MsgService-->>Trigger: 通知已发送
+    deactivate MsgService
+
+    %% ==========================================
+    %% 2. 面试邀约
+    %% ==========================================
+    Note over Trigger, SMS: 面试邀约
+    Trigger->>MsgService: 发送面试邀约通知
+    activate MsgService
+    MsgService->>MsgService: 构建面试邀约消息<br/>"XX公司邀请您参加面试，时间：4月15日14:00"
+    MsgService->>MsgDao: 插入站内信记录
+    activate MsgDao
+    MsgDao-->>MsgService: 保存成功
+    deactivate MsgDao
+    MsgService->>SMS: 发送面试邀约短信
+    activate SMS
+    SMS-->>MsgService: 发送成功
+    deactivate SMS
+    MsgService-->>Trigger: 邀约通知已发送
+    deactivate MsgService
+
+    %% ==========================================
+    %% 3. 职位更新通知
+    %% ==========================================
+    Note over Trigger, SMS: 职位更新通知
+    Trigger->>MsgService: 发送职位更新通知
+    activate MsgService
+    MsgService->>MsgService: 构建职位更新消息<br/>"您关注的【Java开发工程师】已刷新"
+    MsgService->>MsgDao: 插入站内信记录
+    activate MsgDao
+    MsgDao-->>MsgService: 保存成功
+    deactivate MsgDao
+    MsgService-->>Trigger: 通知已发送
+    deactivate MsgService
+
+    %% ==========================================
+    %% 4. 用户查看业务消息
+    %% ==========================================
+    Note over User, SMS: 用户查看业务消息
+    User->>NoticeCtrl: 进入消息中心
+    activate NoticeCtrl
+    NoticeCtrl->>MsgService: 获取业务消息列表
+    activate MsgService
+    MsgService->>MsgDao: 查询业务类型消息
+    activate MsgDao
+    MsgDao-->>MsgService: 返回消息列表
+    deactivate MsgDao
+    MsgService-->>NoticeCtrl: 返回业务消息
+    deactivate MsgService
+    NoticeCtrl-->>User: 展示业务消息列表<br/>(面试邀约/投递反馈/职位更新)
+    deactivate NoticeCtrl
+
+    %% ==========================================
+    %% 5. 处理面试邀约
+    %% ==========================================
+    Note over User, SMS: 处理面试邀约
+    User->>NoticeCtrl: 点击面试邀约消息
+    activate NoticeCtrl
+    NoticeCtrl->>MsgService: 处理面试邀约（接受/拒绝）
+    activate MsgService
+    MsgService->>MsgDao: 更新邀约状态
+    activate MsgDao
+    MsgDao-->>MsgService: 更新成功
+    deactivate MsgDao
+    MsgService->>MsgService: 创建反馈消息<br/>"您已接受面试邀约"
+    MsgService->>MsgDao: 插入反馈消息
+    activate MsgDao
+    MsgDao-->>MsgService: 保存成功
+    deactivate MsgDao
+    MsgService-->>NoticeCtrl: 处理成功
+    deactivate MsgService
+    NoticeCtrl-->>User: 提示"已确认"
+    deactivate NoticeCtrl

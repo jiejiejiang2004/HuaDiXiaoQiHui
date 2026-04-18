@@ -1,0 +1,81 @@
+sequenceDiagram
+    participant Admin as 平台管理员
+    participant Controller as SystemController
+    participant Service as SystemService
+    participant Dao as SystemDao
+    participant DTO as categoryDTO
+
+    Note over Admin, DTO: 职位分类管理
+
+    %% 职位分类管理
+    Admin->>Controller: 进入"职位分类管理"页面
+    activate Controller
+    Controller->>Service: getCategoryTree()
+    activate Service
+    Service->>Dao: 查询所有职位分类(按层级排序)
+    activate Dao
+    Note right of Dao: 分类结构:<br/>- 一级分类: 行业大类<br/>- 二级分类: 细分职位<br/>- 三级分类: 具体岗位
+    Dao-->>Service: 返回分类列表
+    deactivate Dao
+    Service->>Service: 构建树形结构
+    Service-->>Controller: 返回分类树
+    deactivate Service
+    Controller-->>Admin: 展示分类树形表格
+    deactivate Controller
+
+    %% 添加分类
+    Note over Admin, DTO: 添加分类
+    Admin->>Controller: 点击"添加分类"，填写表单
+    activate Controller
+    Controller->>Service: addCategory(categoryDTO)
+    activate Service
+    Note right of DTO: 包含字段:<br/>- categoryName: 分类名称<br/>- parentId: 父分类ID(0为顶级)<br/>- sortOrder: 排序顺序<br/>- status: 状态(ENABLED/DISABLED)
+    Service->>Service: 校验同级分类名称唯一性
+    Service->>Dao: 插入新分类记录
+    activate Dao
+    Dao-->>Service: 返回分类ID
+    deactivate Dao
+    Service-->>Controller: 添加成功
+    deactivate Service
+    Controller-->>Admin: 提示"分类添加成功"<br/>刷新分类树
+    deactivate Controller
+
+    %% 编辑分类
+    Note over Admin, DTO: 编辑分类
+    Admin->>Controller: 点击"编辑"分类
+    activate Controller
+    Controller->>Service: updateCategory(categoryId, categoryDTO)
+    activate Service
+    Service->>Dao: 更新分类信息
+    activate Dao
+    Dao-->>Service: 更新成功
+    deactivate Dao
+    Service-->>Controller: 更新成功
+    deactivate Service
+    Controller-->>Admin: 提示"分类已更新"
+    deactivate Controller
+
+    %% 删除分类
+    Note over Admin, DTO: 删除分类
+    Admin->>Controller: 点击"删除"分类
+    activate Controller
+    Controller->>Service: deleteCategory(categoryId)
+    activate Service
+    Service->>Dao: 检查是否有子分类
+    activate Dao
+    Dao-->>Service: 存在子分类
+    alt 存在子分类
+        Service-->>Controller: 提示"请先删除子分类"
+        deactivate Service
+        Controller-->>Admin: 错误提示
+    else 不存在子分类
+        Service->>Dao: 检查是否有职位关联
+        Dao-->>Service: 无关联职位
+        Service->>Dao: 逻辑删除分类
+        Dao-->>Service: 删除成功
+        deactivate Dao
+        Service-->>Controller: 删除成功
+        deactivate Service
+        Controller-->>Admin: 提示"分类已删除"
+    end
+    deactivate Controller

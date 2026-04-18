@@ -1,0 +1,199 @@
+classDiagram
+    %% 样式定义
+    classDef controller fill:#e8f5e9,stroke:#2e7d32,color:#000;
+    classDef service fill:#fff9c4,stroke:#fbc02d,color:#000;
+    classDef dao fill:#bbdefb,stroke:#1565c0,color:#000;
+    classDef entity fill:#f8bbd0,stroke:#ad1457,color:#000;
+    classDef dto fill:#d1c4e9,stroke:#4527a0,color:#000;
+
+    %% 用户服务层 (Controller)
+    class NoticeController {
+        -noticeService: NoticeService
+        +getNoticeList(Integer, Integer, Integer): Result
+        +getUnreadCount(): Result
+        +getMessageDetail(Long): Result
+        +readMessage(Long): Result
+        +batchRead(List): Result
+        +deleteMessage(Long): Result
+        +batchDelete(List): Result
+        +getSystemNotices(Integer): Result
+        +sendFeedback(String, String): Result
+    }
+
+    %% 业务逻辑层 (Service)
+    class NoticeService {
+        +getMessagesByUser(Long, Integer, Integer, Integer): PageResult
+        +getUnreadCount(Long): Map
+        +getMessageDetail(Long, Long): MessageDetailVO
+        +markAsRead(Long, Long): void
+        +batchMarkAsRead(List, Long): void
+        +deleteMessage(Long, Long): void
+        +batchDelete(List, Long): void
+        +getSystemNotices(Long): List
+        +createMessage(Long, String, String): void
+        +sendDeliveryFeedback(Long, Long, Integer, String): void
+        +sendInterviewInvitation(Long, Long, InterviewDTO): void
+        +sendAccountNotice(Long, String, String): void
+        +pushSmsMessage(Long, String): void
+    }
+
+    class NoticeServiceImpl {
+        -messageDao: MessageDao
+        -userDao: UserDao
+        -smsService: SmsService
+        +getMessagesByUser(Long, Integer, Integer, Integer): PageResult
+        +getUnreadCount(Long): Map
+        +getMessageDetail(Long, Long): MessageDetailVO
+        +markAsRead(Long, Long): void
+        +batchMarkAsRead(List, Long): void
+        +deleteMessage(Long, Long): void
+        +batchDelete(List, Long): void
+        +getSystemNotices(Long): List
+        +createMessage(Long, String, String): void
+        +sendDeliveryFeedback(Long, Long, Integer, String): void
+        +sendInterviewInvitation(Long, Long, InterviewDTO): void
+        +sendAccountNotice(Long, String, String): void
+        +pushSmsMessage(Long, String): void
+        -buildMessageVO(JobMessage): MessageVO
+        -checkPermission(Long, Long): Boolean
+    }
+
+    %% 数据服务层 (Dao)
+    class MessageDao {
+        +insertMessage(JobMessage): int
+        +selectById(Long): JobMessage
+        +selectByUser(Long, Integer, Integer, Integer): List
+        +selectUnreadCount(Long): Integer
+        +selectUnreadCountByType(Long, Integer): Integer
+        +updateReadStatus(Long, Integer): int
+        +batchUpdateReadStatus(List, Integer): int
+        +batchDelete(Long): int
+        +selectSystemNotices(Long): List
+        +selectByType(Long, Integer): List
+        +selectByRelatedId(Long, Integer): List
+        +countByUserAndType(Long, Integer): Long
+    }
+
+    class UserDao {
+        +selectById(Long): SysUser
+    }
+
+    %% 外部服务
+    class SmsService {
+        +sendSms(String, String): void
+        +sendTemplateSms(String, String, Map): void
+    }
+
+    %% 实体层 (Entity)
+    class SysUser {
+        -userId: Long
+        -username: String
+        -realName: String
+        -phone: String
+        -email: String
+        -userType: Integer
+        -status: Integer
+    }
+
+    class JobMessage {
+        -messageId: Long
+        -userId: Long
+        -senderId: Long
+        -messageType: Integer
+        -senderType: Integer
+        -messageTitle: String
+        -messageContent: String
+        -relatedId: Long
+        -relatedType: Integer
+        -isRead: Integer
+        -readTime: Date
+        -isPush: Integer
+        -pushTime: Date
+        -createTime: Date
+    }
+
+    %% 视图对象 (VO/DTO)
+    class InterviewDTO {
+        -applicationId: Long
+        -interviewDate: Date
+        -interviewTime: Time
+        -interviewAddress: String
+        -contactName: String
+        -contactPhone: String
+    }
+
+    class MessageVO {
+        -messageId: Long
+        -messageType: Integer
+        -messageTitle: String
+        -messageContent: String
+        -senderName: String
+        -senderAvatar: String
+        -relatedId: Long
+        -relatedType: Integer
+        -isRead: Integer
+        -createTime: Date
+    }
+
+    class MessageDetailVO {
+        -messageId: Long
+        -messageType: Integer
+        -messageTitle: String
+        -messageContent: String
+        -senderId: Long
+        -senderName: String
+        -senderAvatar: String
+        -relatedId: Long
+        -relatedType: Integer
+        -isRead: Integer
+        -readTime: Date
+        -createTime: Date
+    }
+
+    class UnreadCountVO {
+        -total: Integer
+        -system: Integer
+        -delivery: Integer
+        -interview: Integer
+        -account: Integer
+    }
+
+    %% 枚举
+    class MessageType {
+        SYSTEM = 1
+        DELIVERY_FEEDBACK = 2
+        INTERVIEW_INVITATION = 3
+        ACCOUNT_NOTICE = 4
+    }
+
+    class SenderType {
+        SYSTEM = 0
+        ENTERPRISE = 1
+        ADMIN = 2
+    }
+
+    class RelatedType {
+        POSITION = 1
+        APPLICATION = 2
+        INTERVIEW = 3
+        COMPANY = 4
+    }
+
+    class ReadStatus {
+        UNREAD = 0
+        READ = 1
+    }
+
+    %% 关系
+    NoticeController ..> NoticeService : 依赖
+    NoticeService <|-- NoticeServiceImpl : 实现
+    NoticeServiceImpl ..> MessageDao : 依赖
+    NoticeServiceImpl ..> UserDao : 依赖
+    NoticeServiceImpl ..> SmsService : 依赖
+    MessageDao ..> JobMessage : 使用
+    UserDao ..> SysUser : 使用
+
+    NoticeController ..> MessageVO : 返回
+    NoticeController ..> MessageDetailVO : 返回
+    NoticeController ..> UnreadCountVO : 返回
+    NoticeServiceImpl ..> InterviewDTO : 参数

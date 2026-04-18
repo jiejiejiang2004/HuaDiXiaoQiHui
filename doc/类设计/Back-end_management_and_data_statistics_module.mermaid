@@ -1,0 +1,356 @@
+classDiagram
+    %% 样式定义
+    classDef controller fill:#e8f5e9,stroke:#2e7d32,color:#000;
+    classDef service fill:#fff9c4,stroke:#fbc02d,color:#000;
+    classDef dao fill:#bbdefb,stroke:#1565c0,color:#000;
+    classDef entity fill:#f8bbd0,stroke:#ad1457,color:#000;
+    classDef dto fill:#d1c4e9,stroke:#4527a0,color:#000;
+
+    %% 用户服务层 (Controller)
+    class AdminUserController {
+        -adminUserService: AdminUserService
+        +getUserList(Integer, Integer, Integer): Result
+        +getUserDetail(Long): Result
+        +disableUser(Long, String): Result
+        +enableUser(Long): Result
+        +resetUserPassword(Long): Result
+        +deleteUser(Long): Result
+    }
+
+    class AdminAuditController {
+        -adminAuditService: AdminAuditService
+        +getPendingAuths(Integer, Integer): Result
+        +getPendingPositions(Integer, Integer): Result
+        +auditCompany(Long, Integer, String): Result
+        +auditPosition(Long, Integer, String): Result
+        +batchAuditCompanies(List, Integer, String): Result
+    }
+
+    class SystemConfigController {
+        -systemConfigService: SystemConfigService
+        +getCategories(): Result
+        +addCategory(CategoryDTO): Result
+        +updateCategory(CategoryDTO): Result
+        +deleteCategory(Long): Result
+        +getBanners(): Result
+        +addBanner(BannerDTO): Result
+        +updateBanner(BannerDTO): Result
+        +deleteBanner(Long): Result
+        +getSystemParams(): Result
+        +updateSystemParam(String, String): Result
+    }
+
+    class AdminStatisticsController {
+        -adminStatisticsService: AdminStatisticsService
+        +getOverviewStats(): Result
+        +getUserGrowthStats(Date, Date): Result
+        +getPositionStats(): Result
+        +getDeliveryStats(): Result
+        +getCompanyRanking(): Result
+        +getPositionRanking(): Result
+    }
+
+    %% 业务逻辑层 (Service)
+    class AdminUserService {
+        +getUserList(Integer, Integer, Integer): PageResult
+        +getUserDetail(Long): UserDetailVO
+        +disableUser(Long, String): void
+        +enableUser(Long): void
+        +resetUserPassword(Long): String
+        +deleteUser(Long): void
+    }
+
+    class AdminAuditService {
+        +getPendingAuths(Integer, Integer): PageResult
+        +getPendingPositions(Integer, Integer): PageResult
+        +auditCompany(Long, Integer, String): void
+        +auditPosition(Long, Integer, String): void
+        +batchAuditCompanies(List, Integer, String): void
+    }
+
+    class SystemConfigService {
+        +getCategories(): List
+        +addCategory(CategoryDTO): JobCategory
+        +updateCategory(CategoryDTO): void
+        +deleteCategory(Long): void
+        +getBanners(): List
+        +addBanner(BannerDTO): SysBanner
+        +updateBanner(BannerDTO): void
+        +deleteBanner(Long): void
+        +getSystemParams(): Map
+        +updateSystemParam(String, String): void
+    }
+
+    class AdminStatisticsService {
+        +getOverviewStats(): OverviewStatsVO
+        +getUserGrowthStats(Date, Date): List
+        +getPositionStats(): PositionStatsVO
+        +getDeliveryStats(): DeliveryStatsVO
+        +getCompanyRanking(): List
+        +getPositionRanking(): List
+    }
+
+    %% 实现类 (Impl)
+    class AdminUserServiceImpl {
+        -userDao: UserDao
+        -seekerDao: SeekerDao
+        -companyDao: CompanyDao
+    }
+
+    class AdminAuditServiceImpl {
+        -authDao: AuthDao
+        -positionDao: PositionDao
+        -companyDao: CompanyDao
+        -messageService: MessageService
+    }
+
+    class SystemConfigServiceImpl {
+        -categoryDao: CategoryDao
+        -bannerDao: BannerDao
+        -paramDao: ParamDao
+    }
+
+    class AdminStatisticsServiceImpl {
+        -userDao: UserDao
+        -positionDao: PositionDao
+        -applicationDao: ApplicationDao
+        -companyDao: CompanyDao
+        -seekerDao: SeekerDao
+    }
+
+    %% 数据服务层 (Dao)
+    class UserDao {
+        +selectList(Integer, Integer, Integer): List
+        +selectById(Long): SysUser
+        +updateStatus(Long, Integer): int
+        +deleteById(Long): int
+        +countByType(Integer): Long
+        +selectGrowthData(Date, Date): List
+    }
+
+    class SeekerDao {
+        +selectList(Integer, Integer): List
+        +countTotal(): Long
+    }
+
+    class CompanyDao {
+        +selectList(Integer, Integer): List
+        +countTotal(): Long
+        +selectRanking(): List
+    }
+
+    class AuthDao {
+        +selectPendingList(Integer, Integer): List
+        +updateAuditResult(Long, Integer, String, Long): int
+    }
+
+    class PositionDao {
+        +selectPendingList(Integer, Integer): List
+        +updateStatus(Long, Integer): int
+        +countTotal(): Long
+        +countByStatus(Integer): Long
+        +selectRanking(): List
+    }
+
+    class ApplicationDao {
+        +countTotal(): Long
+        +countByStatus(Integer): Long
+        +selectDailyStats(Date, Date): List
+    }
+
+    class CategoryDao {
+        +selectAll(): List
+        +insertCategory(JobCategory): int
+        +updateCategory(JobCategory): int
+        +deleteCategory(Long): int
+    }
+
+    class BannerDao {
+        +selectAll(): List
+        +insertBanner(SysBanner): int
+        +updateBanner(SysBanner): int
+        +deleteBanner(Long): int
+    }
+
+    class ParamDao {
+        +selectByKey(String): SysParam
+        +updateValueByKey(String, String): int
+    }
+
+    %% 实体层 (Entity)
+    class SysUser {
+        -userId: Long
+        -username: String
+        -password: String
+        -realName: String
+        -phone: String
+        -email: String
+        -userType: Integer
+        -status: Integer
+        -createTime: Date
+    }
+
+    class JobCategory {
+        -categoryId: Long
+        -categoryName: String
+        -categoryType: Integer
+        -categoryLevel: Integer
+        -status: Integer
+    }
+
+    class SysBanner {
+        -bannerId: Long
+        -bannerTitle: String
+        -bannerImage: String
+        -bannerUrl: String
+        -sortOrder: Integer
+        -status: Integer
+        -createTime: Date
+    }
+
+    class SysParam {
+        -paramId: Long
+        -paramKey: String
+        -paramValue: String
+        -remark: String
+        -createTime: Date
+    }
+
+    class CompanyAuth {
+        -authId: Long
+        -companyId: Long
+        -legalPerson: String
+        -idCard: String
+        -businessLicense: String
+        -licenseImage: String
+        -auditStatus: Integer
+        -auditRemark: String
+        -auditTime: Date
+    }
+
+    class JobPosition {
+        -positionId: Long
+        -companyId: Long
+        -positionName: String
+        -categoryId: Long
+        -status: Integer
+        -publishTime: Date
+    }
+
+    %% 枚举
+    class UserStatus {
+        DISABLED = 0
+        ENABLED = 1
+    }
+
+    class AuditStatus {
+        PENDING = 0
+        APPROVED = 1
+        REJECTED = 2
+    }
+
+    %% 数据传输对象 (DTO/VO)
+    class UserDetailVO {
+        -userId: Long
+        -username: String
+        -realName: String
+        -phone: String
+        -email: String
+        -userType: Integer
+        -status: Integer
+        -createTime: Date
+        -companyName: String
+        -resumeInfo: String
+    }
+
+    class CategoryDTO {
+        -categoryName: String
+        -categoryType: Integer
+        -categoryLevel: Integer
+        -parentId: Long
+    }
+
+    class BannerDTO {
+        -bannerTitle: String
+        -bannerImage: String
+        -bannerUrl: String
+        -sortOrder: Integer
+    }
+
+    class OverviewStatsVO {
+        -totalUsers: Long
+        -totalSeekers: Long
+        -totalCompanies: Long
+        -totalPositions: Long
+        -totalApplications: Long
+        -todayUsers: Long
+        -todayApplications: Long
+    }
+
+    class PositionStatsVO {
+        -total: Long
+        -published: Long
+        -closed: Long
+        -expired: Long
+        -rejected: Long
+    }
+
+    class DeliveryStatsVO {
+        -total: Long
+        -applied: Long
+        -viewed: Long
+        -invited: Long
+        -accepted: Long
+        -rejected: Long
+    }
+
+    class CompanyRankingVO {
+        -companyId: Long
+        -companyName: String
+        -positionCount: Integer
+        -applicationCount: Integer
+    }
+
+    class PositionRankingVO {
+        -positionId: Long
+        -positionName: String
+        -companyName: String
+        -viewCount: Integer
+        -applicationCount: Integer
+    }
+
+    %% 关系
+    AdminUserController ..> AdminUserService
+    AdminAuditController ..> AdminAuditService
+    SystemConfigController ..> SystemConfigService
+    AdminStatisticsController ..> AdminStatisticsService
+
+    AdminUserService <|-- AdminUserServiceImpl
+    AdminAuditService <|-- AdminAuditServiceImpl
+    SystemConfigService <|-- SystemConfigServiceImpl
+    AdminStatisticsService <|-- AdminStatisticsServiceImpl
+
+    AdminUserServiceImpl ..> UserDao
+    AdminUserServiceImpl ..> SeekerDao
+    AdminUserServiceImpl ..> CompanyDao
+
+    AdminAuditServiceImpl ..> AuthDao
+    AdminAuditServiceImpl ..> PositionDao
+    AdminAuditServiceImpl ..> CompanyDao
+
+    SystemConfigServiceImpl ..> CategoryDao
+    SystemConfigServiceImpl ..> BannerDao
+    SystemConfigServiceImpl ..> ParamDao
+
+    AdminStatisticsServiceImpl ..> UserDao
+    AdminStatisticsServiceImpl ..> PositionDao
+    AdminStatisticsServiceImpl ..> ApplicationDao
+    AdminStatisticsServiceImpl ..> CompanyDao
+    AdminStatisticsServiceImpl ..> SeekerDao
+
+    UserDao ..> SysUser
+    CategoryDao ..> JobCategory
+    BannerDao ..> SysBanner
+    ParamDao ..> SysParam
+    AuthDao ..> CompanyAuth
+    PositionDao ..> JobPosition

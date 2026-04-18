@@ -1,0 +1,147 @@
+sequenceDiagram
+    participant HR as 企业HR
+    participant Controller as InterviewController
+    participant Service as InterviewService
+    participant InterviewDao as InterviewDao
+    participant ResumeDao as ResumeManageDao
+    participant MsgService as MessageService
+    participant SMS as 短信接口
+    participant Email as 邮件接口
+    participant DTO as InterviewDTO
+
+    %% ==========================================
+    %% 1. 发送面试邀约
+    %% ==========================================
+    Note over HR, DTO: 发送面试邀约
+    HR->>Controller: 选择求职者, 点击"发送面试邀约"
+    activate Controller
+    Controller->>Service: 获取求职者联系方式
+    activate Service
+
+    Service->>ResumeDao: 校验企业权限<br/>(确认简历投递给本企业)
+    activate ResumeDao
+    ResumeDao-->>Service: 验证通过
+    deactivate ResumeDao
+
+    Service->>ResumeDao: 查询求职者联系方式<br/>(手机号/邮箱)
+    activate ResumeDao
+    ResumeDao-->>Service: 返回联系方式
+    deactivate ResumeDao
+
+    Service-->>Controller: 返回联系方式及简历信息
+    deactivate Service
+    Controller-->>HR: 展示面试邀约表单<br/>(预填求职者姓名/联系方式)
+
+    HR->>Controller: 填写邀约信息<br/>(面试时间/地点/形式/联系人/备注)
+    activate Controller
+    Controller->>Service: 发送面试邀请
+    activate Service
+
+    Service->>Service: 数据校验<br/>(面试时间不能早于当前时间)
+    Service->>InterviewDao: 创建面试邀约记录<br/>(状态:待确认)
+    activate InterviewDao
+    InterviewDao-->>Service: 返回邀约ID
+    deactivate InterviewDao
+
+    Service->>ResumeDao: 更新投递记录状态为'INTERVIEW'
+    activate ResumeDao
+    ResumeDao-->>Service: 更新成功
+    deactivate ResumeDao
+
+    deactivate Service
+    deactivate Controller
+
+    %% ==========================================
+    %% 2. 多渠道通知求职者
+    %% ==========================================
+    Note over HR, DTO: 多渠道通知求职者
+    Service->>MsgService: 创建站内信<br/>(面试邀约通知)
+    activate MsgService
+    MsgService-->>Service: 站内信已创建
+    deactivate MsgService
+
+    alt 求职者绑定手机号
+        Service->>SMS: 发送面试邀约短信
+        activate SMS
+        Note right of SMS: 短信内容示例:<br/>【校企慧】XX公司邀请您参加面试<br/>时间: 2026-04-15 14:00<br/>地点: 成都市郫都区XX大厦3楼<br/>请登录平台查看详情并确认。
+        SMS-->>Service: 发送成功
+        deactivate SMS
+    end
+
+    Service-->>Controller: 邀约发送成功
+    Controller-->>HR: 提示"面试邀约已发送"
+    deactivate Controller
+
+    %% ==========================================
+    %% 3. 查看邀约列表
+    %% ==========================================
+    Note over HR, DTO: 查看邀约列表
+    HR->>Controller: 进入"面试管理"页面
+    activate Controller
+    Controller->>Service: 获取面试邀约列表
+    activate Service
+    Service->>InterviewDao: 查询本企业的面试邀约记录
+    activate InterviewDao
+    Note right of InterviewDao: 状态筛选:<br/>- PENDING: 待求职者确认<br/>- ACCEPTED: 求职者已接受<br/>- REJECTED: 求职者已拒绝<br/>- COMPLETED: 面试已完成<br/>- CANCELLED: 企业已取消
+    InterviewDao-->>Service: 返回邀约列表
+    deactivate InterviewDao
+
+    Service->>InterviewDao: 关联查询职位/简历信息
+    activate InterviewDao
+    InterviewDao-->>Service: 返回补充数据
+    deactivate InterviewDao
+
+    Service-->>Controller: 返回邀约列表
+    deactivate Service
+    Controller-->>HR: 展示邀约列表<br/>(求职者/职位/面试时间/状态)
+    deactivate Controller
+
+    %% ==========================================
+    %% 4. 取消面试邀约
+    %% ==========================================
+    Note over HR, DTO: 取消面试邀约
+    HR->>Controller: 点击"取消邀约"
+    activate Controller
+    Controller->>Service: 取消面试邀约
+    activate Service
+
+    Service->>InterviewDao: 校验企业权限<br/>(邀约属于本企业且状态为PENDING)
+    activate InterviewDao
+    InterviewDao-->>Service: 验证通过
+    deactivate InterviewDao
+
+    Service->>InterviewDao: 更新邀约状态为'CANCELLED'<br/>保存取消原因
+    activate InterviewDao
+    InterviewDao-->>Service: 更新成功
+    deactivate InterviewDao
+
+    Service->>ResumeDao: 更新投递记录状态回'VIEWED'
+    activate ResumeDao
+    ResumeDao-->>Service: 更新成功
+    deactivate ResumeDao
+
+    Service->>MsgService: 通知求职者邀约已取消
+    activate MsgService
+    MsgService-->>Service: 通知已发送
+    deactivate MsgService
+
+    Service-->>Controller: 取消成功
+    deactivate Service
+    Controller-->>HR: 提示"面试邀约已取消"
+    deactivate Controller
+
+    %% ==========================================
+    %% 5. 处理求职者确认反馈
+    %% ==========================================
+    Note over HR, DTO: 处理求职者确认反馈
+    Note over Service: 求职者端确认/拒绝后, 企业端同步状态
+    Service->>InterviewDao: 求职者确认接受<br/>更新邀约状态为'ACCEPTED'
+    activate InterviewDao
+    InterviewDao-->>Service: 状态更新
+    deactivate InterviewDao
+
+    Service->>MsgService: 异步通知企业HR
+    activate MsgService
+    MsgService->>MsgService: 发送站内信<br/>"求职者已接受面试邀约"
+    MsgService-->>Service: 通知已发送
+    deactivate MsgService

@@ -1,0 +1,203 @@
+sequenceDiagram
+    participant User as 求职者
+    participant JobController as JobController
+    participant JobService as JobService
+    participant DeliveryService as DeliveryService
+    participant JobDao as JobDao
+    participant DeliveryDao as DeliveryDao
+    participant SearchService as SearchService
+
+    %% ==========================================
+    %% 1. 多条件搜索职位
+    %% ==========================================
+    Note over User, SearchService: 多条件搜索职位
+    User->>JobController: 输入搜索条件<br/>(薪资/学历/经验/地点/行业)
+    activate JobController
+    JobController->>SearchService: 搜索岗位(搜索DTO)
+    activate SearchService
+
+    alt 使用搜索引擎(如Elasticsearch)
+        SearchService->>SearchService: 构建查询DSL
+        SearchService->>SearchService: 执行全文检索
+    else 使用数据库模糊查询
+        SearchService->>JobDao: 多条件分页查询
+        activate JobDao
+        JobDao-->>SearchService: 返回职位列表
+        deactivate JobDao
+    end
+
+    SearchService->>JobDao: 查询职位关联企业信息
+    activate JobDao
+    JobDao-->>SearchService: 补充企业数据
+    deactivate JobDao
+    deactivate SearchService
+
+    SearchService-->>JobController: 返回分页职位列表
+    JobController-->>User: 展示职位列表
+    deactivate JobController
+
+    %% ==========================================
+    %% 2. 查看职位详情
+    %% ==========================================
+    Note over User, JobDao: 查看职位详情
+    User->>JobController: 点击职位卡片
+    activate JobController
+    JobController->>JobService: 获取职位详情(职位Id, 用户Id)
+    activate JobService
+
+    JobService->>JobDao: 查询职位基本信息
+    activate JobDao
+    JobDao-->>JobService: 返回职位信息
+    deactivate JobDao
+
+    JobService->>JobDao: 查询企业详细信息
+    activate JobDao
+    JobDao-->>JobService: 返回企业信息
+    deactivate JobDao
+
+    JobService->>JobDao: 增加职位浏览次数(+1)
+    activate JobDao
+    deactivate JobDao
+
+    JobService->>JobDao: 查询当前用户是否已收藏
+    activate JobDao
+    JobDao-->>JobService: 返回收藏状态
+    deactivate JobDao
+
+    JobService->>DeliveryDao: 查询当前用户是否已投递
+    activate DeliveryDao
+    DeliveryDao-->>JobService: 返回投递状态
+    deactivate DeliveryDao
+
+    JobService-->>JobController: 返回职位详情数据
+    deactivate JobService
+    JobController-->>User: 展示职位详情页
+    deactivate JobController
+
+    %% ==========================================
+    %% 3. 一键投递简历
+    %% ==========================================
+    Note over User, DeliveryDao: 一键投递简历
+    User->>JobController: 选择简历并投递职位
+    activate JobController
+    JobController->>DeliveryService: 投递简历(职位Id, 简历Id, 用户Id)
+    activate DeliveryService
+
+    DeliveryService->>DeliveryDao: 检查是否重复投递
+    activate DeliveryDao
+    DeliveryDao-->>DeliveryService: 未投递
+    deactivate DeliveryDao
+
+    DeliveryService->>DeliveryDao: 创建投递记录<br/>(状态:待查看)
+    activate DeliveryDao
+    DeliveryDao-->>DeliveryService: 返回投递ID
+    deactivate DeliveryDao
+
+    DeliveryService->>JobDao: 更新职位投递数量(+1)
+    activate JobDao
+    deactivate JobDao
+
+    DeliveryService->>DeliveryService: 异步触发消息通知<br/>(通知企业HR)
+    DeliveryService-->>JobController: 投递成功
+    deactivate DeliveryService
+    JobController-->>User: 提示投递成功
+    deactivate JobController
+
+    %% ==========================================
+    %% 4. 批量投递简历
+    %% ==========================================
+    Note over User, DeliveryDao: 批量投递简历
+    User->>JobController: 选择多个职位和简历
+    activate JobController
+    JobController->>DeliveryService: 批量投递(投递列表)
+    activate DeliveryService
+
+    loop 遍历投递列表
+        DeliveryService->>DeliveryDao: 检查重复投递
+        activate DeliveryDao
+        DeliveryDao-->>DeliveryService: 返回检查结果
+        deactivate DeliveryDao
+
+        DeliveryService->>DeliveryDao: 创建投递记录
+        activate DeliveryDao
+        DeliveryDao-->>DeliveryService: 返回结果
+        deactivate DeliveryDao
+    end
+
+    DeliveryService->>DeliveryService: 统计成功/失败数量
+    DeliveryService-->>JobController: 返回批量投递结果
+    deactivate DeliveryService
+    JobController-->>User: 展示投递结果汇总<br/>(成功X条, 失败Y条)
+    deactivate JobController
+
+    %% ==========================================
+    %% 5. 收藏/取消收藏职位
+    %% ==========================================
+    Note over User, JobDao: 收藏/取消收藏职位
+    User->>JobController: 点击收藏/取消收藏
+    activate JobController
+
+    alt 收藏职位
+        JobController->>JobService: 收藏职位(职位Id, 用户Id)
+        activate JobService
+        JobService->>JobDao: 检查是否已收藏
+        activate JobDao
+        JobDao-->>JobService: 未收藏
+        deactivate JobDao
+
+        JobService->>JobDao: 插入收藏记录
+        activate JobDao
+        JobDao-->>JobService: 返回结果
+        deactivate JobDao
+
+        JobService->>JobDao: 职位收藏数量(+1)
+        activate JobDao
+        deactivate JobDao
+
+        JobService-->>JobController: 收藏成功
+        deactivate JobService
+        JobController-->>User: 显示已收藏
+    else 取消收藏
+        JobController->>JobService: 取消收藏(职位Id, 用户Id)
+        activate JobService
+        JobService->>JobDao: 删除收藏记录
+        activate JobDao
+        JobDao-->>JobService: 返回结果
+        deactivate JobDao
+
+        JobService->>JobDao: 职位收藏数量(-1)
+        activate JobDao
+        deactivate JobDao
+
+        JobService-->>JobController: 取消成功
+        deactivate JobService
+        JobController-->>User: 显示未收藏
+    end
+    deactivate JobController
+
+    %% ==========================================
+    %% 6. 查看投递记录与状态
+    %% ==========================================
+    Note over User, DeliveryDao: 查看投递记录与状态
+    User->>JobController: 进入投递记录页面
+    activate JobController
+    JobController->>DeliveryService: 获取投递记录(UserId, statusFilter)
+    activate DeliveryService
+
+    DeliveryService->>DeliveryDao: 分页查询投递记录
+    activate DeliveryDao
+    DeliveryDao-->>DeliveryService: 返回投递记录列表
+    deactivate DeliveryDao
+
+    loop 遍历投递记录
+        DeliveryService->>JobDao: 关联查询职位信息
+        activate JobDao
+        JobDao-->>DeliveryService: 返回职位信息
+        deactivate JobDao
+    end
+
+    DeliveryService->>DeliveryService: 状态映射<br/>(待查看/已查看/面试邀约/不合适)
+    DeliveryService-->>JobController: 返回投递记录
+    deactivate DeliveryService
+    JobController-->>User: 展示投递列表及状态
+    deactivate JobController

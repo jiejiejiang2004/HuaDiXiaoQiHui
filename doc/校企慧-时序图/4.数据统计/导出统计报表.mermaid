@@ -1,0 +1,32 @@
+sequenceDiagram
+    participant User as 用户
+    participant Controller as StatisticsController
+    participant Service as StatisticsService
+    participant Dao as StatisticsDao
+    participant Enum as reportType
+
+    Note over User, Enum: 导出统计报表
+    User->>Controller: 点击"导出报表"
+    activate Controller
+    Controller->>Service: 导出数据报表
+    activate Service
+
+    alt 导出个人统计
+        Service->>Dao: 查询用户投递明细
+        Service->>Dao: 查询面试邀约明细
+        Service->>Service: 生成个人统计Excel
+    else 导出企业统计
+        Service->>Dao: 查询企业职位明细
+        Service->>Dao: 查询简历接收明细
+        Service->>Service: 生成企业统计Excel
+    else 导出平台统计
+        Service->>Service: 聚合平台各维度数据
+        Service->>Dao: 生成平台报表Excel<br/>(多Sheet)
+    end
+
+    Note right of Enum: 报表类型:<br/>- PERSONAL: 个人统计<br/>- ENTERPRISE: 企业统计<br/>- PLATFORM: 平台统计<br/>- REGIONAL: 区域报表
+
+    Service-->>Controller: 返回Excel文件流
+    deactivate Service
+    Controller-->>User: 下载Excel文件
+    deactivate Controller

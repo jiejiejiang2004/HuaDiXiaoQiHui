@@ -1,0 +1,180 @@
+sequenceDiagram
+    participant Admin as 平台管理员
+    participant Controller as UserManageController
+    participant Service as UserManageService
+    participant Dao as UserManageDao
+    participant MsgService as MessageService
+    participant Filters as filters
+
+    %% 查看个人用户列表
+    Note over Admin, Filters: 查看个人用户列表
+    Admin->>Controller: 进入"个人用户管理"页面
+    activate Controller
+    Controller->>Service: getPersonalUsers(pageNum, pageSize, filters)
+    activate Service
+    Service->>Dao: 分页查询个人用户列表
+    activate Dao
+    Note right of Dao: 筛选条件:<br/>- userName: 用户名模糊搜索<br/>- phone: 手机号<br/>- status: 账号状态(ENABLED/DISABLED)<br/>- registerTime: 注册时间范围
+    Dao-->>Service: 返回用户列表及总数
+    deactivate Dao
+    Service->>Service: 补充统计数据(简历数/投递数)
+    Service-->>Controller: 返回用户列表
+    deactivate Service
+    Controller-->>Admin: 展示用户表格(用户名/手机号/注册时间/状态/操作)
+    deactivate Controller
+
+    %% 查看企业用户列表
+    Note over Admin, Filters: 查看企业用户列表
+    Admin->>Controller: 进入"企业用户管理"页面
+    activate Controller
+    Controller->>Service: getEnterpriseUsers(pageNum, pageSize, filters)
+    activate Service
+    Service->>Dao: 分页查询企业用户列表(关联企业信息表)
+    activate Dao
+    Note right of Dao: 筛选条件:<br/>- companyName: 企业名称<br/>- creditCode: 统一信用代码<br/>- authStatus: 认证状态<br/>- status: 账号状态
+    Dao-->>Service: 返回企业列表及总数
+    deactivate Dao
+    Service->>Service: 补充统计数据(职位数/简历接收量)
+    Service-->>Controller: 返回企业列表
+    deactivate Service
+    Controller-->>Admin: 展示企业表格(企业名称/联系人/认证状态/账号状态)
+    deactivate Controller
+
+    %% 禁用/启用个人用户
+    Note over Admin, Filters: 禁用/启用个人用户
+    Admin->>Controller: 点击"禁用/启用"个人用户
+    activate Controller
+    alt 禁用用户
+        Controller->>Service: disablePersonalUser(userId, reason)
+        activate Service
+        Service->>Dao: 检查用户是否存在
+        activate Dao
+        Dao-->>Service: 用户存在
+        Service->>Dao: 更新用户status='DISABLED'<br/>保存禁用原因
+        Dao-->>Service: 更新成功
+        deactivate Dao
+        Service->>MsgService: 发送站内信通知用户"账号已被禁用"
+        activate MsgService
+        MsgService-->>Service: 通知已发送
+        deactivate MsgService
+        Service-->>Controller: 禁用成功
+        deactivate Service
+        Controller-->>Admin: 提示"用户已禁用"
+    else 启用用户
+        Controller->>Service: enablePersonalUser(userId)
+        activate Service
+        Service->>Dao: 更新用户status='ENABLED'
+        activate Dao
+        Dao-->>Service: 更新成功
+        deactivate Dao
+        Service->>MsgService: 发送站内信通知用户"账号已恢复使用"
+        activate MsgService
+        MsgService-->>Service: 通知已发送
+        deactivate MsgService
+        Service-->>Controller: 启用成功
+        deactivate Service
+        Controller-->>Admin: 提示"用户已启用"
+    end
+    deactivate Controller
+
+    %% 禁用/启用企业用户
+    Note over Admin, Filters: 禁用/启用企业用户
+    Admin->>Controller: 点击"禁用/启用"企业用户
+    activate Controller
+    alt 禁用企业
+        Controller->>Service: disableEnterpriseUser(companyId, reason)
+        activate Service
+        Service->>Dao: 检查企业是否存在
+        activate Dao
+        Dao-->>Service: 企业存在
+        Service->>Dao: 更新企业status='DISABLED'<br/>保存禁用原因
+        Dao-->>Service: 更新成功
+        Service->>Dao: 批量下架该企业所有在招职位
+        Dao-->>Service: 下架成功
+        deactivate Dao
+        Service->>MsgService: 发送通知给企业HR
+        activate MsgService
+        MsgService-->>Service: 通知已发送
+        deactivate MsgService
+        Service-->>Controller: 禁用成功
+        deactivate Service
+        Controller-->>Admin: 提示"企业已禁用，相关职位已下架"
+    else 启用企业
+        Controller->>Service: enableEnterpriseUser(companyId)
+        activate Service
+        Service->>Dao: 更新企业status='ENABLED'
+        activate Dao
+        Dao-->>Service: 更新成功
+        deactivate Dao
+        Service->>MsgService: 发送通知给企业HR
+        activate MsgService
+        MsgService-->>Service: 通知已发送
+        deactivate MsgService
+        Service-->>Controller: 启用成功
+        deactivate Service
+        Controller-->>Admin: 提示"企业已启用"
+    end
+    deactivate Controller
+
+    %% 企业认证审核
+    Note over Admin, Filters: 企业认证审核
+    Admin->>Controller: 点击"企业认证审核"
+    activate Controller
+    Controller->>Service: getPendingAuthCompanies(pageNum, pageSize)
+    activate Service
+    Service->>Dao: 查询auth_status='AUDITING'的企业
+    activate Dao
+    Dao-->>Service: 返回待审核企业列表
+    deactivate Dao
+    Service->>Service: 关联查询营业执照URL
+    Service-->>Controller: 返回待审核列表
+    deactivate Service
+    Controller-->>Admin: 展示认证申请列表(企业信息/营业执照预览)
+
+    Admin->>Controller: 查看企业认证详情
+    activate Controller
+    Controller->>Service: getCompanyAuthDetail(companyId)
+    activate Service
+    Service->>Dao: 查询企业完整认证信息
+    activate Dao
+    Dao-->>Service: 返回企业信息+营业执照URL
+    deactivate Dao
+    Service-->>Controller: 返回认证详情
+    deactivate Service
+    Controller-->>Admin: 弹窗展示企业信息(可预览营业执照图片)
+
+    alt 审核通过
+        Admin->>Controller: 点击"通过认证"
+        activate Controller
+        Controller->>Service: approveCompanyAuth(companyId, remark)
+        activate Service
+        Service->>Dao: 更新auth_status='APPROVED'<br/>审核通过时间
+        activate Dao
+        Dao-->>Service: 更新成功
+        deactivate Dao
+        Service->>MsgService: 通知企业HR认证通过
+        activate MsgService
+        MsgService-->>Service: 通知已发送
+        deactivate MsgService
+        Service-->>Controller: 审核通过
+        deactivate Service
+        Controller-->>Admin: 提示"认证已通过"
+        deactivate Controller
+    else 审核驳回
+        Admin->>Controller: 填写驳回原因，点击"驳回"
+        activate Controller
+        Controller->>Service: rejectCompanyAuth(companyId, reason)
+        activate Service
+        Service->>Dao: 更新auth_status='REJECTED'<br/>保存驳回原因
+        activate Dao
+        Dao-->>Service: 更新成功
+        deactivate Dao
+        Service->>MsgService: 通知企业HR驳回原因
+        activate MsgService
+        MsgService-->>Service: 通知已发送
+        deactivate MsgService
+        Service-->>Controller: 驳回成功
+        deactivate Service
+        Controller-->>Admin: 提示"已驳回"
+        deactivate Controller
+    end

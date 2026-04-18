@@ -1,0 +1,75 @@
+sequenceDiagram
+    participant User as 用户
+    participant Controller as StatisticsController
+    participant Service as StatisticsService
+    participant StatisticsDao as StatisticsDao
+    participant DeliveryDao as DeliveryDao
+    participant JobDao as JobDao
+
+    %% 子流程1：平台管理员统计
+    Note over User, JobDao: 平台管理员统计
+    User->>Controller: 进入"平台统计"页面
+    activate Controller
+    Controller->>Service: 获取平台数据
+    activate Service
+
+    Service->>Service: 统计总用户数
+    activate Service
+    Service->>StatisticsDao: 统计个人用户数+企业用户数
+    activate StatisticsDao
+    StatisticsDao-->>Service: 返回用户总数
+    deactivate StatisticsDao
+    deactivate Service
+
+    Service->>Service: 统计新增用户数 (时间段内)
+    activate Service
+    Service->>StatisticsDao: 统计新增用户
+    activate StatisticsDao
+    StatisticsDao-->>Service: 返回新增用户数
+    deactivate StatisticsDao
+    deactivate Service
+
+    Service->>Service: 统计总职位数
+    activate Service
+    Service->>JobDao: 统计所有职位
+    activate JobDao
+    JobDao-->>Service: 职位总数
+    deactivate JobDao
+    Service-->>Service: 返回职位数
+    deactivate Service
+
+    Service->>Service: 统计总投递量
+    activate Service
+    Service->>DeliveryDao: 统计所有投递记录
+    activate DeliveryDao
+    DeliveryDao-->>Service: 投递总数
+    deactivate DeliveryDao
+    Service-->>Service: 返回投递量
+    deactivate Service
+
+    %% 子流程2：区域就业数据报表
+    Note over User, JobDao: 区域就业数据报表
+    User->>Controller: 查看区域就业报表
+    Controller->>Service: getRegionalReport(areaCode, dateRange)
+    
+    Service->>Service: 按区域统计职位分布
+    activate Service
+    Service->>JobDao: GROUP BY work_city
+    activate JobDao
+    JobDao-->>Service: 区域职位分布
+    deactivate JobDao
+    deactivate Service
+
+    Service->>Service: 按区域统计投递分布
+    activate Service
+    Service->>DeliveryDao: 关联职位区域
+    activate DeliveryDao
+    DeliveryDao-->>Service: 区域投递分布
+    deactivate DeliveryDao
+    deactivate Service
+
+    Service->>Service: 生成区域报表数据
+    Service-->>Controller: 返回区域报表
+    deactivate Service
+    Controller-->>User: 展示区域地图/柱状图
+    deactivate Controller

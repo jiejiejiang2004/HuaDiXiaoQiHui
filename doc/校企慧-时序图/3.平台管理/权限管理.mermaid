@@ -1,0 +1,51 @@
+sequenceDiagram
+    participant Admin as 平台管理员
+    participant Controller as SystemController
+    participant Service as SystemService
+    participant Dao as SystemDao
+
+    Note over Admin, Dao: 权限管理
+
+    %% 查看角色列表
+    Admin->>Controller: 进入"权限管理"页面
+    activate Controller
+    Controller->>Service: getRoleList()
+    activate Service
+    Service->>Dao: 查询所有角色
+    activate Dao
+    Note right of Dao: 角色类型:<br/>- PERSONAL: 个人求职者<br/>- ENTERPRISE: 企业用户<br/>- ADMIN: 平台管理员
+    Dao-->>Service: 返回角色列表
+    deactivate Dao
+    Service-->>Controller: 返回角色列表
+    deactivate Service
+    Controller-->>Admin: 展示角色列表
+
+    %% 分配权限
+    Admin->>Controller: 点击"分配权限"
+    activate Controller
+    Controller->>Service: getPermissionTree()
+    activate Service
+    Service->>Dao: 查询所有权限点(按模块分组)
+    activate Dao
+    Note right of Dao: 权限模块:<br/>- 职位管理<br/>- 简历管理<br/>- 用户管理<br/>- 审核管理<br/>- 系统设置
+    Dao-->>Service: 返回权限列表
+    deactivate Dao
+    Service->>Service: 构建权限树
+    Service-->>Controller: 返回权限树
+    deactivate Service
+    Controller-->>Admin: 展示权限分配弹窗(树形复选框)
+
+    Admin->>Controller: 勾选权限并保存
+    activate Controller
+    Controller->>Service: assignPermissions(roleId, permissionIds)
+    activate Service
+    Service->>Dao: 删除原有权限关联
+    activate Dao
+    Dao-->>Service: 删除成功
+    Service->>Dao: 批量插入新权限关联
+    Dao-->>Service: 插入成功
+    deactivate Dao
+    Service-->>Controller: 保存成功
+    deactivate Service
+    Controller-->>Admin: 提示"权限已更新"
+    deactivate Controller

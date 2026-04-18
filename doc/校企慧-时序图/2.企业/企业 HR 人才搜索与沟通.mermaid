@@ -1,0 +1,134 @@
+sequenceDiagram
+    participant HR as 企业HR
+    participant Controller as TalentSearchController
+    participant Service as TalentSearchService
+    participant Dao as TalentSearchDao
+    participant SearchService as SearchService
+    participant MsgService as MessageService
+
+    %% ==========================================
+    %% 1. 多条件检索人才库
+    %% ==========================================
+    Note over HR, MsgService: 多条件检索人才库
+    HR->>Controller: 进入"人才搜索"页面
+    activate Controller
+    Controller->>Service: getFilterOptions
+    activate Service
+    Service->>Dao: 获取可用的筛选维度
+    activate Dao
+    Note right of Dao: 筛选维度:<br/>- 学历(大专/本科/硕士/博士)<br/>- 工作经验(应届生/1-3年/3-5年/5-10年/10年以上)<br/>- 期望薪资<br/>- 意向行业<br/>- 意向职位类型<br/>- 所在地区
+    Dao-->>Service: 返回筛选选项
+    deactivate Dao
+    Service-->>Controller: 返回筛选器配置
+    deactivate Service
+    Controller-->>HR: 展示搜索筛选器
+
+    HR->>Controller: 输入搜索条件<br/>(关键词/学历/经验/薪资/地区等)
+    activate Controller
+    Controller->>Service: searchTalents(searchDTO)
+    activate Service
+
+    alt 使用Elasticsearch
+        Service->>SearchService: 构建查询DSL
+        activate SearchService
+        SearchService->>SearchService: 执行搜索
+        SearchService-->>Service: 返回简历ID列表
+        deactivate SearchService
+    else 使用数据库
+        Service->>Dao: 多条件动态SQL查询
+        activate Dao
+        Note right of Dao: 只搜索公开简历:<br/>privacy_level = 'PUBLIC'
+        Dao-->>Service: 返回简历列表
+        deactivate Dao
+    end
+
+    Service->>Dao: 补充用户基础信息<br/>(姓名/头像/期望职位)
+    activate Dao
+    Dao-->>Service: 补充完成
+    deactivate Dao
+
+    Service-->>Controller: 返回人才搜索结果
+    deactivate Service
+    Controller-->>HR: 展示人才列表<br/>(姓名/学历/工作经验/技能标签)
+    deactivate Controller
+
+    %% ==========================================
+    %% 2. 查看公开简历详情
+    %% ==========================================
+    Note over HR, MsgService: 查看公开简历详情
+    HR->>Controller: 点击人才卡片，查看简历
+    activate Controller
+    Controller->>Service: 获取公开简历
+    activate Service
+    Service->>Dao: 查询简历信息
+    activate Dao
+    Dao-->>Service: 返回简历数据
+    deactivate Dao
+
+    Service->>Dao: 记录企业查看行为<br/>(用于统计和推荐)
+    activate Dao
+    Dao-->>Service: 记录成功
+    deactivate Dao
+
+    Service-->>Controller: 返回简历详情<br/>(隐藏联系方式，需发起沟通)
+    deactivate Service
+    Controller-->>HR: 展示简历详情<br/>(教育/工作/技能，联系方式脱敏)
+    deactivate Controller
+
+    %% ==========================================
+    %% 3. 发起沟通
+    %% ==========================================
+    Note over HR, MsgService: 发起沟通
+    HR->>Controller: 点击"发起沟通"
+    activate Controller
+    Controller->>Service: 发起沟通
+    activate Service
+
+    Service->>Dao: 检查是否已发起过沟通
+    activate Dao
+    Dao-->>Service: 未发起过
+    deactivate Dao
+
+    Service->>Dao: 创建沟通记录<br/>(状态:待回复)
+    activate Dao
+    Dao-->>Service: 创建成功
+    deactivate Dao
+
+    Service->>MsgService: 发送站内信给求职者<br/>"XX企业对您感兴趣，希望与您沟通"
+    activate MsgService
+    MsgService-->>Service: 通知已发送
+    deactivate MsgService
+
+    Service-->>Controller: 发起成功
+    deactivate Service
+    Controller-->>HR: 提示"沟通请求已发送，等待求职者回复"
+    deactivate Controller
+
+    %% ==========================================
+    %% 4. 直接邀约（跳过投递流程）
+    %% ==========================================
+    Note over HR, MsgService: 直接邀约（跳过投递流程）
+    HR->>Controller: 点击"直接邀约面试"
+    activate Controller
+    Controller->>Service: 直接发送面试邀约
+    activate Service
+
+    Service->>Dao: 检查求职者简历公开程度
+    activate Dao
+    Dao-->>Service: 简历公开，允许邀约
+    deactivate Dao
+
+    Service->>Dao: 创建特殊邀约记录<br/>(不经过投递流程)
+    activate Dao
+    Dao-->>Service: 创建成功
+    deactivate Dao
+
+    Service->>MsgService: 发送面试邀约通知
+    activate MsgService
+    MsgService-->>Service: 通知已发送
+    deactivate MsgService
+
+    Service-->>Controller: 邀约成功
+    deactivate Service
+    Controller-->>HR: 提示"面试邀约已发送"
+    deactivate Controller

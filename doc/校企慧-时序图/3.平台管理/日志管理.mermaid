@@ -1,0 +1,72 @@
+sequenceDiagram
+    participant Admin as 平台管理员
+    participant Controller as SystemController
+    participant Service as SystemService
+    participant Dao as SystemDao
+    participant Filters as filters
+
+    %% 操作日志查询
+    Note over Admin, Filters: 操作日志查询
+    Admin->>Controller: 进入"操作日志"页面
+    activate Controller
+    Controller->>Service: 获取操作日志列表
+    activate Service
+    Service->>Dao: 分页查询操作日志
+    activate Dao
+    Note right of Dao: 筛选条件:<br/>- operator: 操作人<br/>- operationType: 操作类型<br/>- targetType: 目标类型<br/>- operationTime: 时间范围<br/>- ipAddress: IP地址
+    Dao-->>Service: 返回日志列表及总数
+    deactivate Dao
+    Note right of Dao: 操作日志记录:<br/>- 操作人ID/类型<br/>- 操作类型(CREATE/UPDATE/DELETE)<br/>- 目标类型/ID<br/>- 操作内容详情<br/>- IP地址/UserAgent<br/>- 操作时间
+    Service->>Service: 格式化操作时间<br/>转换操作人名称
+    Service-->>Controller: 返回日志列表
+    deactivate Service
+    Controller-->>Admin: 展示操作日志表格(时间/操作人/操作类型/目标/详情)
+    deactivate Controller
+
+    %% 操作日志详情查看
+    Note over Admin, Filters: 操作日志详情查看
+    Admin->>Controller: 点击"查看详情"
+    activate Controller
+    Controller->>Service: 获取操作日志详情
+    activate Service
+    Service->>Dao: 查询日志完整信息
+    activate Dao
+    Dao-->>Service: 返回日志详情(含请求参数/响应结果)
+    deactivate Dao
+    Service->>Service: 格式化JSON参数(便于阅读)
+    Service-->>Controller: 返回日志详情
+    deactivate Service
+    Controller-->>Admin: 弹窗展示日志详情(请求参数/响应结果/异常信息)
+    deactivate Controller
+
+    %% 审核日志查询
+    Note over Admin, Filters: 审核日志查询
+    Admin->>Controller: 进入"审核日志"页面
+    activate Controller
+    Controller->>Service: 获取审核日志
+    activate Service
+    Service->>Dao: 分页查询审核日志
+    activate Dao
+    Note right of Dao: 筛选条件:<br/>- auditor: 审核人<br/>- auditType: 审核类型(职位/企业/公告)<br/>- auditResult: 审核结果(通过/驳回)<br/>- auditTime: 审核时间范围
+    Note right of Dao: 审核日志记录:<br/>- 审核人ID/名称<br/>- 审核类型<br/>- 目标ID/名称<br/>- 审核结果(APPROVED/REJECTED)<br/>- 驳回原因<br/>- 审核备注<br/>- 审核时间
+    Dao-->>Service: 返回日志列表及总数
+    deactivate Dao
+    Service-->>Controller: 返回审核日志列表
+    deactivate Service
+    Controller-->>Admin: 展示审核日志表格(时间/审核人/类型/目标/结果/原因)
+    deactivate Controller
+
+    %% 审核日志详情查看
+    Note over Admin, Filters: 审核日志详情查看
+    Admin->>Controller: 点击"查看详情"
+    activate Controller
+    Controller->>Service: 查询审核日志详情
+    activate Service
+    Service->>Dao: 查询审核日志完整信息
+    activate Dao
+    Dao-->>Service: 返回日志详情
+    deactivate Dao
+    Service-->>Controller: 返回详情
+    deactivate Service
+    Controller-->>Admin: 弹窗展示审核详情(审核前后对比/驳回原因)
+    deactivate Controller

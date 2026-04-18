@@ -1,0 +1,79 @@
+sequenceDiagram
+    participant User as 用户
+    participant Trigger as 业务触发点
+    participant MsgService as MessageService
+    participant MsgDao as MessageDao
+    participant NoticeCtrl as NoticeController
+    participant Email as 邮件接口
+
+    %% ==========================================
+    %% 1. 审核结果通知
+    %% ==========================================
+    Note over Trigger, Email: 审核结果通知
+    Trigger->>MsgService: 发送审核结果通知
+    activate MsgService
+
+    alt 审核通过
+        MsgService->>MsgService: 构建通过通知<br/>"您的职位已审核通过"
+    else 审核驳回
+        MsgService->>MsgService: 构建驳回通知<br/>"您的职位未通过审核，原因：xxx"
+    end
+
+    MsgService->>MsgDao: 插入站内信记录
+    activate MsgDao
+    MsgDao-->>MsgService: 保存成功
+    deactivate MsgDao
+    MsgService->>Email: 发送邮件通知（可选）
+    activate Email
+    Email-->>MsgService: 发送成功
+    deactivate Email
+    MsgService-->>Trigger: 通知已发送
+    deactivate MsgService
+
+    %% ==========================================
+    %% 2. 账号状态变更通知
+    %% ==========================================
+    Note over Trigger, Email: 账号状态变更通知
+    Trigger->>MsgService: 发送账号变更通知
+    activate MsgService
+    MsgService->>MsgService: 构建状态通知<br/>"您的账号已被【禁用】，原因：xxx"
+    MsgService->>MsgDao: 插入站内信记录
+    activate MsgDao
+    MsgDao-->>MsgService: 保存成功
+    deactivate MsgDao
+    MsgService-->>Trigger: 通知已发送
+    deactivate MsgService
+
+    %% ==========================================
+    %% 3. 用户查看系统消息
+    %% ==========================================
+    Note over User, Email: 用户查看系统消息
+    User->>NoticeCtrl: 进入消息中心
+    activate NoticeCtrl
+    NoticeCtrl->>MsgService: 获取消息列表
+    activate MsgService
+    MsgService->>MsgDao: 查询系统类型消息
+    activate MsgDao
+    MsgDao-->>MsgService: 返回消息列表
+    deactivate MsgDao
+    MsgService-->>NoticeCtrl: 返回系统消息
+    deactivate MsgService
+    NoticeCtrl-->>User: 展示系统消息列表
+    deactivate NoticeCtrl
+
+    %% ==========================================
+    %% 4. 标记已读
+    %% ==========================================
+    Note over User, Email: 标记已读
+    User->>NoticeCtrl: 点击消息
+    activate NoticeCtrl
+    NoticeCtrl->>MsgService: 将消息标记为已读
+    activate MsgService
+    MsgService->>MsgDao: 更新is_read=1
+    activate MsgDao
+    MsgDao-->>MsgService: 更新成功
+    deactivate MsgDao
+    MsgService-->>NoticeCtrl: 返回消息详情
+    deactivate MsgService
+    NoticeCtrl-->>User: 展示消息内容
+    deactivate NoticeCtrl

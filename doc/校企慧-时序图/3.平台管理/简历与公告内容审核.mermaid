@@ -1,0 +1,157 @@
+sequenceDiagram
+    participant Admin as 平台管理员
+    participant Controller as MessageAuditController
+    participant Service as MessageAuditService
+    participant Dao as MessageAuditDao
+    participant ContentService as ContentCheckService
+    participant MsgService as MessageService
+
+    %% 简历内容审核
+    Note over Admin, MsgService: 简历内容审核
+    Admin->>Controller: 进入"简历审核"页面
+    activate Controller
+    Controller->>Service: getFlaggedResumes(pageNum, pageSize)
+    activate Service
+    Service->>Dao: 查询flagged=true的简历
+    activate Dao
+    Note right of Dao: 获取被标记的简历:<br/>- 系统自动检测违规<br/>- 用户举报<br/>- 包含敏感词
+    Dao-->>Service: 返回问题简历列表
+    deactivate Dao
+    Service->>Service: 关联查询用户信息
+    Service-->>Controller: 返回问题简历列表
+    deactivate Service
+    Controller-->>Admin: 展示问题简历列表(用户/简历标题/违规标记/操作)
+    deactivate Controller
+
+    %% 查看简历详情
+    Note over Admin, MsgService: 查看简历详情
+    Admin->>Controller: 点击查看简历详情
+    activate Controller
+    Controller->>Service: getResumeDetailForAudit(resumeId)
+    activate Service
+    Service->>Dao: 查询简历完整内容
+    activate Dao
+    Dao-->>Service: 返回简历信息
+    deactivate Dao
+    Service->>ContentService: 重新检测违规内容
+    activate ContentService
+    Note right of ContentService: 检测内容:<br/>- 政治敏感词<br/>- 违法信息<br/>- 广告垃圾信息<br/>- 联系方式泄露
+    ContentService-->>Service: 返回检测结果(敏感词列表)
+    deactivate ContentService
+    Service-->>Controller: 返回简历详情+检测结果
+    deactivate Service
+    Controller-->>Admin: 展示简历详情页(高亮敏感词)
+    deactivate Controller
+
+    %% 处理违规简历
+    Note over Admin, MsgService: 处理违规简历
+    Admin->>Controller: 处理违规简历
+    activate Controller
+    alt 清理/下架简历
+        Admin->>Controller: 点击"下架/清理简历"
+        Controller->>Service: removeResume(resumeId, reason)
+        activate Service
+        Service->>Dao: 逻辑删除简历(设置is_deleted=1)
+        activate Dao
+        Dao-->>Service: 删除成功
+        Service->>Dao: 记录违规处理日志
+        Dao-->>Service: 记录成功
+        deactivate Dao
+        Service->>MsgService: 通知用户简历被下架及原因
+        activate MsgService
+        MsgService-->>Service: 通知已发送
+        deactivate MsgService
+        Service-->>Controller: 处理成功
+        deactivate Service
+        Controller-->>Admin: 提示"简历已下架"
+    else 标记为正常(误报)
+        Admin->>Controller: 点击"标记为正常"
+        Controller->>Service: markResumeClean(resumeId)
+        activate Service
+        Service->>Dao: 清除flagged标记
+        activate Dao
+        Dao-->>Service: 更新成功
+        deactivate Dao
+        Service-->>Controller: 标记成功
+        deactivate Service
+        Controller-->>Admin: 提示"已标记为正常"
+    end
+    deactivate Controller
+
+    %% 公告审核
+    Note over Admin, MsgService: 公告审核
+    Admin->>Controller: 进入"公告审核"页面
+    activate Controller
+    Controller->>Service: getPendingAnnouncements(pageNum, pageSize)
+    activate Service
+    Service->>Dao: 查询status='PENDING'的公告
+    activate Dao
+    Dao-->>Service: 返回待审核公告列表
+    deactivate Dao
+    Service-->>Controller: 返回公告列表
+    deactivate Service
+    Controller-->>Admin: 展示待审核公告列表(标题/创建人/提交时间)
+
+    Admin->>Controller: 点击查看公告详情
+    activate Controller
+    Controller->>Service: getAnnouncementDetail(annId)
+    activate Service
+    Service->>Dao: 查询公告完整内容
+    activate Dao
+    Dao-->>Service: 返回公告信息
+    deactivate Dao
+    Service->>ContentService: 检测公告内容合规性
+    activate ContentService
+    ContentService-->>Service: 返回检测结果
+    deactivate ContentService
+    Service-->>Controller: 返回公告详情
+    deactivate Service
+    Controller-->>Admin: 展示公告详情页
+    deactivate Controller
+
+    alt 公告审核通过
+        Admin->>Controller: 点击"通过发布"
+        activate Controller
+        Controller->>Service: approveAnnouncement(annId)
+        activate Service
+        Service->>Dao: 更新status='PUBLISHED'<br/>设置发布时间
+        activate Dao
+        Dao-->>Service: 更新成功
+        deactivate Dao
+        Service-->>Controller: 通过成功
+        deactivate Service
+        Controller-->>Admin: 提示"公告已发布"
+        deactivate Controller
+    else 公告审核驳回
+        Admin->>Controller: 填写驳回原因，点击"驳回"
+        activate Controller
+        Controller->>Service: rejectAnnouncement(annId, reason)
+        activate Service
+        Service->>Dao: 更新status='REJECTED'<br/>保存驳回原因
+        activate Dao
+        Dao-->>Service: 更新成功
+        deactivate Dao
+        Service->>MsgService: 通知发布人驳回原因
+        activate MsgService
+        MsgService-->>Service: 通知已发送
+        deactivate MsgService
+        Service-->>Controller: 驳回成功
+        deactivate Service
+        Controller-->>Admin: 提示"公告已驳回"
+        deactivate Controller
+    end
+
+    %% 公告下架
+    Note over Admin, MsgService: 公告下架
+    Admin->>Controller: 点击"下架"已发布的公告
+    activate Controller
+    Controller->>Service: offlineAnnouncement(annId)
+    activate Service
+    Service->>Dao: 更新status='OFFLINE'
+    activate Dao
+    Dao-->>Service: 更新成功
+    deactivate Dao
+    Service-->>Controller: 下架成功
+    deactivate Service
+    Controller-->>Admin: 提示"公告已下架"
+    deactivate Controller

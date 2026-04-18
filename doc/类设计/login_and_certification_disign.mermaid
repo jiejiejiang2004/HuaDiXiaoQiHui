@@ -1,0 +1,165 @@
+classDiagram
+    %% 样式定义
+    classDef controller fill:#e8f5e9,stroke:#2e7d32,color:#000;
+    classDef service fill:#fff9c4,stroke:#fbc02d,color:#000;
+    classDef dao fill:#bbdefb,stroke:#1565c0,color:#000;
+    classDef entity fill:#f8bbd0,stroke:#ad1457,color:#000;
+    classDef dto fill:#d1c4e9,stroke:#4527a0,color:#000;
+
+    %% 用户服务层 (Controller)
+    class LoginController {
+        -loginService: LoginService
+        +register(RegisterDTO): Result
+        +login(LoginDTO): Result~TokenVO~
+        +sendSmsCode(phone: String): Result
+        +validateSmsCode(phone: String, code: String): Result
+        +resetPassword(ResetPwdDTO): Result
+        +logout(token: String): Result
+        +getCurrentUser(): Result~UserVO~
+    }
+
+    %% 业务逻辑层 (Service)
+    class LoginService {
+        +doRegister(RegisterDTO): SysUser
+        +doLogin(LoginDTO): LoginResultVO
+        +generateSmsCode(phone: String): String
+        +validateSmsCode(phone: String, code: String): boolean
+        +resetPassword(ResetPwdDTO): boolean
+        +encryptPassword(rawPassword: String): String
+        +validateToken(token: String): Long
+        +recordLoginLog(userId: Long, ip: String): void
+    }
+
+    class LoginServiceImpl {
+        -loginDao: LoginDao
+        -sysLogDao: SysLogDao
+        -smsService: SmsService
+        -redisTemplate: RedisTemplate
+        +doRegister(RegisterDTO): SysUser
+        +doLogin(LoginDTO): LoginResultVO
+        +generateSmsCode(phone: String): String
+        +validateSmsCode(phone: String, code: String): boolean
+        +resetPassword(ResetPwdDTO): boolean
+        +encryptPassword(rawPassword: String): String
+        +validateToken(token: String): Long
+        +recordLoginLog(userId: Long, ip: String): void
+        -generateToken(userId: Long): String
+        -verifyPassword(raw: String, encoded: String): boolean
+    }
+
+    %% 数据服务层 (Dao)
+    class LoginDao {
+        +insertUser(SysUser): int
+        +selectByUsername(username: String): SysUser
+        +selectByPhone(phone: String): SysUser
+        +selectById(userId: Long): SysUser
+        +updatePassword(userId: Long, password: String): int
+        +updateLastLogin(userId: Long, ip: String): int
+        +updateStatus(userId: Long, status: Integer): int
+    }
+
+    class SysLogDao {
+        +insertLog(SysLog): int
+        +selectByTimeRange(start: Date, end: Date): List~SysLog~
+    }
+
+    %% 实体层 (Entity)
+    class SysUser {
+        -userId: Long
+        -username: String
+        -password: String
+        -realName: String
+        -phone: String
+        -email: String
+        -avatar: String
+        -gender: Integer
+        -birthday: Date
+        -userType: Integer
+        -status: Integer
+        -lastLoginTime: Date
+        -lastLoginIp: String
+        -createTime: Date
+        -updateTime: Date
+    }
+
+    class SysLog {
+        -logId: Long
+        -userId: Long
+        -username: String
+        -operation: String
+        -method: String
+        -params: String
+        -ip: String
+        -status: Integer
+        -errorMsg: String
+        -createTime: Date
+    }
+
+    %% 数据传输对象 (DTO/VO)
+    class UserVO {
+        -userId: Long
+        -username: String
+        -realName: String
+        -phone: String
+        -email: String
+        -avatar: String
+        -userType: Integer
+        -status: Integer
+    }
+
+    class LoginResultVO {
+        -token: String
+        -userInfo: UserVO
+    }
+
+    class RegisterDTO {
+        -username: String
+        -password: String
+        -confirmPassword: String
+        -phone: String
+        -smsCode: String
+        -userType: Integer
+        -realName: String
+    }
+
+    class LoginDTO {
+        -account: String
+        -password: String
+        -loginType: Integer
+        -smsCode: String
+    }
+
+    class ResetPwdDTO {
+        -phone: String
+        -smsCode: String
+        -newPassword: String
+    }
+
+    class TokenVO {
+        -token: String
+        -userId: Long
+        -username: String
+        -userType: Integer
+        -expireTime: Date
+    }
+
+    %% 枚举
+    class UserType {
+        JOB_SEEKER = 1
+        ENTERPRISE = 2
+        ADMIN = 3
+    }
+
+    class UserStatus {
+        DISABLED = 0
+        ENABLED = 1
+    }
+
+    %% 关系
+    LoginController ..> LoginService : 依赖
+    LoginService <|-- LoginServiceImpl : 实现
+    LoginServiceImpl ..> LoginDao : 依赖
+    LoginServiceImpl ..> SysLogDao : 依赖
+    LoginServiceImpl ..> SmsService : 依赖 (外部)
+    LoginDao ..> SysUser : 使用
+    SysLogDao ..> SysLog : 使用

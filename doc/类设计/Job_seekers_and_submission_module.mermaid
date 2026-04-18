@@ -1,0 +1,379 @@
+classDiagram
+    %% 样式定义
+    classDef controller fill:#e8f5e9,stroke:#2e7d32,color:#000;
+    classDef service fill:#fff9c4,stroke:#fbc02d,color:#000;
+    classDef dao fill:#bbdefb,stroke:#1565c0,color:#000;
+    classDef entity fill:#f8bbd0,stroke:#ad1457,color:#000;
+    classDef dto fill:#d1c4e9,stroke:#4527a0,color:#000;
+
+    %% 用户服务层 (Controller)
+    class DeliveryController {
+        -deliveryService: DeliveryService
+        +applyPosition(Long): Result
+        +batchApply(List): Result
+        +getDeliveryList(Integer, Integer): Result
+        +collectPosition(Long): Result
+        +getCollectList(): Result
+    }
+
+    class PersonalMessageController {
+        -messageService: PersonalMessageService
+        +getMessagesList(Integer, Integer): Result
+        +getUnreadCount(): Result
+        +readMessage(Long): Result
+        +deleteMessage(Long): Result
+    }
+
+    class JobController {
+        -jobService: JobService
+        +searchPositions(SearchDTO): Result
+        +getPositionDetail(Long): Result
+        +getRecommendPositions(): Result
+        +filterByCondition(FilterDTO): Result
+    }
+
+    class ResumeController {
+        -resumeService: ResumeService
+        +createResume(ResumeDTO): Result
+        +updateResume(ResumeDTO): Result
+        +getResumeDetail(): Result
+        +addEducation(EduDTO): Result
+        +addExperience(ExpDTO): Result
+        +addSkill(SkillDTO): Result
+        +exportResumePDF(): Result
+    }
+
+    %% 业务逻辑层 (Service)
+    class JobService {
+        +searchPositions(String, FilterDTO): PageResult
+        +getPositionDetail(Long, Long): PositionDetailVO
+        +getRecommendPositions(Long): List
+        +filterByCondition(FilterDTO): PageResult
+    }
+
+    class DeliveryService {
+        +applyPosition(Long, Long, Long): JobApplication
+        +addFavorite(Long, Long, Integer): JobFavorite
+        +removeFavorite(Long, Long, Integer): void
+    }
+
+    class PersonalMessageService {
+        +getMessagesByUser(Long, Integer, Integer): PageResult
+        +getUnreadCount(Long): Map
+        +markAsRead(Long, Long): void
+        +deleteMessage(Long, Long): void
+    }
+
+    class ResumeService {
+        +createResume(Long, ResumeDTO): JobSeeker
+        +getResumeByUserId(Long): ResumeVO
+        +saveEducation(EduDTO): JobEducation
+        +saveExperience(ExpDTO): JobExperience
+        +saveSkill(SkillDTO): JobSkill
+        +exportPDF(Long): byte[]
+    }
+
+    class JobServiceImpl {
+        -jobDao: JobDao
+        -favoriteDao: FavoriteDao
+        -applicationDao: ApplicationDao
+        -positionDao: PositionDao
+        +searchPositions(String, FilterDTO): PageResult
+        +getPositionDetail(Long, Long): PositionDetailVO
+        +getRecommendPositions(Long): List
+        +filterByCondition(FilterDTO): PageResult
+    }
+
+    class DeliveryServiceImpl {
+        -applicationDao: ApplicationDao
+        -favoriteDao: FavoriteDao
+        -positionDao: PositionDao
+        +applyPosition(Long, Long, Long): JobApplication
+        +addFavorite(Long, Long, Integer): JobFavorite
+        +removeFavorite(Long, Long, Integer): void
+    }
+
+    class PersonalMessageServiceImpl {
+        -messageDao: MessageDao
+        +getMessagesByUser(Long, Integer, Integer): PageResult
+        +getUnreadCount(Long): Map
+        +markAsRead(Long, Long): void
+        +deleteMessage(Long, Long): void
+    }
+
+    class ResumeServiceImpl {
+        -resumeDao: ResumeDao
+        +createResume(Long, ResumeDTO): JobSeeker
+        +getResumeByUserId(Long): ResumeVO
+        +saveEducation(EduDTO): JobEducation
+        +saveExperience(ExpDTO): JobExperience
+        +saveSkill(SkillDTO): JobSkill
+        +exportPDF(Long): byte[]
+    }
+
+    %% 数据服务层 (Dao)
+    class ResumeDao {
+        +insertSeeker(JobSeeker): int
+        +updateSeeker(JobSeeker): int
+        +selectByUserId(Long): JobSeeker
+        +insertEducation(JobEducation): int
+        +insertExperience(JobExperience): int
+        +insertSkill(JobSkill): int
+        +selectEducationBySeekerId(Long): List
+        +selectExperiencesBySeekerId(Long): List
+        +selectSkillsBySeekerId(Long): List
+    }
+
+    class JobDao {
+        +selectPositionById(Long): JobPosition
+        +selectPositionsByCondition(QueryWrapper): List
+        +selectRecommendPositions(Long): List
+        +incrementViewCount(Long): int
+    }
+
+    class FavoriteDao {
+        +insertFavorite(JobFavorite): int
+        +deleteFavorite(Long, Long, Integer): int
+        +selectByUser(Long): List
+    }
+
+    class ApplicationDao {
+        +insertApplication(JobApplication): int
+        +selectByUserAndPosition(Long, Long): JobApplication
+        +selectApplicationsByUser(Long, Integer): List
+        +updateApplicationStatus(Long, Integer): int
+    }
+
+    class PositionDao {
+        +selectById(Long): JobPosition
+    }
+
+    class MessageDao {
+        +selectByUser(Long, Integer): List
+        +selectUnreadCount(Long): Integer
+        +updateReadStatus(Long, Integer): int
+        +deleteMessage(Long): int
+    }
+
+    %% 实体层 (Entity)
+    class JobSeeker {
+        -seekerId: Long
+        -userId: Long
+        -realName: String
+        -gender: Integer
+        -phone: String
+        -email: String
+        -jobIntro: String
+        -jobStatus: Integer
+        -selfIntro: String
+        -expectedCity: String
+        -expectedSalaryMin: BigDecimal
+        -expectedSalaryMax: BigDecimal
+        -isPublic: Integer
+        -completeness: Integer
+    }
+
+    class JobEducation {
+        -eduId: Long
+        -seekerId: Long
+        -schoolName: String
+        -major: String
+        -degree: Integer
+        -startDate: Date
+        -endDate: Date
+    }
+
+    class JobExperience {
+        -expId: Long
+        -seekerId: Long
+        -companyName: String
+        -position: String
+        -startDate: Date
+        -endDate: Date
+        -workDesc: String
+    }
+
+    class JobSkill {
+        -skillId: Long
+        -seekerId: Long
+        -skillName: String
+        -proficiency: Integer
+    }
+
+    class JobFavorite {
+        -favoriteId: Long
+        -userId: Long
+        -targetId: Long
+        -targetType: Integer
+    }
+
+    class CompanyInfo {
+        -companyId: Long
+        -companyName: String
+        -companyLogo: String
+        -industry: String
+        -city: String
+    }
+
+    class JobPosition {
+        -positionId: Long
+        -companyId: Long
+        -positionName: String
+        -positionType: Integer
+        -salaryMin: BigDecimal
+        -salaryMax: BigDecimal
+        -city: String
+        -education: Integer
+        -experience: Integer
+        -jobDesc: String
+        -viewCount: Integer
+        -applyCount: Integer
+        -status: Integer
+    }
+
+    class JobApplication {
+        -applicationId: Long
+        -positionId: Long
+        -companyId: Long
+        -seekerId: Long
+        -applyStatus: Integer
+        -applyTime: Date
+    }
+
+    class JobMessage {
+        -messageId: Long
+        -userId: Long
+        -messageType: Integer
+        -messageTitle: String
+        -messageContent: String
+        -isRead: Integer
+    }
+
+    %% 枚举
+    class FavoriteType {
+        POSITION = 1
+        COMPANY = 2
+    }
+
+    class ApplyStatus {
+        APPLIED = 1
+        VIEWED = 2
+        INTERESTED = 3
+        NOT_SUITABLE = 4
+        INVITED = 5
+    }
+
+    class MessageType {
+        SYSTEM = 1
+        DELIVERY = 2
+        INTERVIEW = 3
+    }
+
+    %% 数据传输对象 (DTO/VO)
+    class DeliveryVO {
+        -applicationId: Long
+        -positionName: String
+        -companyName: String
+        -applyStatus: Integer
+    }
+
+    class MessageVO {
+        -messageId: Long
+        -messageType: Integer
+        -messageTitle: String
+        -isRead: Integer
+    }
+
+    class SearchDTO {
+        -keyword: String
+        -city: String
+        -education: Integer
+    }
+
+    class PositionDetailVO {
+        -positionId: Long
+        -positionName: String
+        -companyInfo: CompanyInfo
+        -jobDesc: String
+    }
+
+    class PositionVO {
+        -positionId: Long
+        -positionName: String
+        -companyName: String
+        -salaryMin: BigDecimal
+        -salaryMax: BigDecimal
+        -city: String
+    }
+
+    class EduDTO {
+        -schoolName: String
+        -major: String
+        -degree: Integer
+        -startDate: Date
+        -endDate: Date
+    }
+
+    class ExpDTO {
+        -companyName: String
+        -position: String
+        -startDate: Date
+        -endDate: Date
+        -workDesc: String
+    }
+
+    class SkillDTO {
+        -skillName: String
+        -proficiency: Integer
+    }
+
+    class ResumeDTO {
+        -realName: String
+        -gender: Integer
+        -phone: String
+        -email: String
+        -expectedCity: String
+        -expectedSalaryMin: BigDecimal
+        -expectedSalaryMax: BigDecimal
+    }
+
+    class ResumeVO {
+        -seekerId: Long
+        -realName: String
+        -phone: String
+        -email: String
+        -educations: List
+        -experiences: List
+        -skills: List
+    }
+
+    %% 关系
+    DeliveryController ..> DeliveryService
+    PersonalMessageController ..> PersonalMessageService
+    JobController ..> JobService
+    ResumeController ..> ResumeService
+
+    JobService <|-- JobServiceImpl
+    DeliveryService <|-- DeliveryServiceImpl
+    PersonalMessageService <|-- PersonalMessageServiceImpl
+    ResumeService <|-- ResumeServiceImpl
+
+    JobServiceImpl ..> JobDao
+    JobServiceImpl ..> FavoriteDao
+    JobServiceImpl ..> ApplicationDao
+    JobServiceImpl ..> PositionDao
+
+    DeliveryServiceImpl ..> ApplicationDao
+    DeliveryServiceImpl ..> FavoriteDao
+    DeliveryServiceImpl ..> PositionDao
+
+    PersonalMessageServiceImpl ..> MessageDao
+
+    ResumeServiceImpl ..> ResumeDao
+
+    JobDao ..> JobPosition
+    FavoriteDao ..> JobFavorite
+    ApplicationDao ..> JobApplication
+    PositionDao ..> JobPosition
+    MessageDao ..> JobMessage
+    ResumeDao ..> JobSeeker

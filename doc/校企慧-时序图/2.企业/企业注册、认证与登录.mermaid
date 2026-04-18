@@ -1,0 +1,171 @@
+sequenceDiagram
+    participant HR as 企业HR
+    participant Controller as CompanyController
+    participant Service as CompanyService
+    participant Dao as CompanyDao
+    participant FileService as FileStorageService
+    participant UCenter as 统一用户接口
+    participant Admin as 平台管理员
+
+    %% ==========================================
+    %% 1. 企业注册
+    %% ==========================================
+    Note over HR, Admin: 企业注册
+    HR->>Controller: 填写企业注册信息<br/>(联系人/手机号/密码)
+    activate Controller
+    Controller->>Service: 注册(企业注册DTO)
+    activate Service
+
+    Service->>Dao: 检查手机号/统一信用代码是否已注册
+    activate Dao
+    Dao-->>Service: 未注册
+    deactivate Dao
+
+    Service->>UCenter: 创建统一账号
+    activate UCenter
+    UCenter-->>Service: 返回统一账号ID
+    deactivate UCenter
+
+    Service->>Dao: 保存企业基础信息<br/>(状态:待认证)
+    activate Dao
+    Dao-->>Service: 返回企业ID
+    deactivate Dao
+
+    Service-->>Controller: 注册成功
+    deactivate Service
+    Controller-->>HR: 跳转至认证信息填写页
+    deactivate Controller
+
+    %% ==========================================
+    %% 2. 企业认证信息填写与提交
+    %% ==========================================
+    Note over HR, Admin: 企业认证信息填写与提交
+    HR->>Controller: 填写认证信息<br/>(企业全称/营业执照号/法人/地址等)
+    activate Controller
+    Controller->>Service: 提交资质证书(企业Id, 企业认证DTO)
+    activate Service
+
+    Service->>FileService: 上传营业执照图片
+    activate FileService
+    FileService-->>Service: 返回文件URL
+    deactivate FileService
+
+    Service->>Service: 校验信息完整性
+    Service->>Dao: 更新企业认证信息<br/>(状态:审核中)
+    activate Dao
+    Dao-->>Service: 更新成功
+    deactivate Dao
+
+    Service->>Service: 异步触发审核通知(通知管理员)
+    Service-->>Controller: 提交成功
+    deactivate Service
+    Controller-->>HR: 提示"认证信息已提交，请等待审核"
+    deactivate Controller
+
+    %% ==========================================
+    %% 3. 平台审核企业认证（管理员视角）
+    %% ==========================================
+    Note over HR, Admin: 平台审核企业认证（管理员视角）
+    Admin->>Controller: 查看待审核企业列表
+    activate Controller
+    Controller->>Service: 获取待审核企业列表()
+    activate Service
+    Service->>Dao: 查询status='AUDITING'的企业
+    activate Dao
+    Dao-->>Service: 返回企业列表
+    deactivate Dao
+    Service-->>Controller: 返回待审核列表
+    deactivate Service
+    Controller-->>Admin: 展示企业认证申请
+    deactivate Controller
+
+    alt 审核通过
+        Admin->>Controller: 点击"通过认证"
+        activate Controller
+        Controller->>Service: 同意企业认证(企业Id)
+        activate Service
+        Service->>Dao: 更新status='APPROVED'
+        activate Dao
+        Dao-->>Service: 更新成功
+        deactivate Dao
+        Service->>Service: 触发站内信通知企业
+        Service-->>Controller: 审核通过
+        deactivate Service
+        Controller-->>Admin: 确认通过
+        deactivate Controller
+    else 审核驳回
+        Admin->>Controller: 填写驳回原因并点击"驳回"
+        activate Controller
+        Controller->>Service: 驳回企业认证(企业Id, 原因)
+        activate Service
+        Service->>Dao: 更新status='REJECTED'<br/>保存驳回原因
+        activate Dao
+        Dao-->>Service: 更新成功
+        deactivate Dao
+        Service->>Service: 触发站内信+短信通知企业
+        Service-->>Controller: 驳回成功
+        deactivate Service
+        Controller-->>Admin: 确认驳回
+        deactivate Controller
+    end
+
+    %% ==========================================
+    %% 4. 企业登录
+    %% ==========================================
+    Note over HR, Admin: 企业登录
+    HR->>Controller: 输入账号/手机号+密码
+    activate Controller
+    Controller->>Service: 登录(账号/手机号, 密码)
+    activate Service
+
+    Service->>Dao: 根据账号查询企业用户
+    activate Dao
+    Dao-->>Service: 返回企业信息及认证状态
+    deactivate Dao
+
+    alt 认证状态为'APPROVED'
+        Service->>Service: BCrypt校验密码
+        Service->>Service: 生成JWT Token(含企业ID、角色)
+        Service->>Dao: 更新最后登录时间
+        activate Dao
+        deactivate Dao
+        Service-->>Controller: 返回Token及企业信息
+        Controller-->>HR: 登录成功，进入企业首页
+    else 认证状态为'AUDITING'
+        Service-->>Controller: 提示"认证审核中"
+        Controller-->>HR: 显示审核中提示
+    else 认证状态为'REJECTED'
+        Service-->>Controller: 返回驳回原因
+        Controller-->>HR: 显示驳回原因，引导重新提交
+    else 认证状态为'PENDING'
+        Service-->>Controller: 提示"请先完成认证"
+        Controller-->>HR: 跳转至认证信息填写页
+    end
+    deactivate Service
+    deactivate Controller
+
+    %% ==========================================
+    %% 5. 企业信息编辑与Logo上传
+    %% ==========================================
+    Note over HR, Admin: 企业信息编辑与Logo上传
+    HR->>Controller: 修改企业信息/上传Logo
+    activate Controller
+    Controller->>Service: 修改企业信息(企业Id, 企业DTO)
+    activate Service
+
+    alt 上传Logo
+        Service->>FileService: 上传Logo图片
+        activate FileService
+        FileService-->>Service: 返回Logo URL
+        deactivate FileService
+    end
+
+    Service->>Dao: 更新企业信息字段
+    activate Dao
+    Dao-->>Service: 更新成功
+    deactivate Dao
+
+    Service-->>Controller: 保存成功
+    deactivate Service
+    Controller-->>HR: 显示"信息已更新"
+    deactivate Controller

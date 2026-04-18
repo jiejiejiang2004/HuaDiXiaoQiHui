@@ -1,0 +1,49 @@
+sequenceDiagram
+    participant User as 用户
+    participant Controller as StatisticsController
+    participant Service as StatisticsService
+    participant StatisticsDao as StatisticsDao
+    participant DeliveryDao as DeliveryDao
+    participant JobDao as JobDao
+
+    Note over User, JobDao: 个人求职者统计
+    User->>Controller: 进入"我的统计"页面
+    activate Controller
+    Controller->>Service: 获取个人数据统计
+    activate Service
+
+    %% 统计投递
+    Service->>Service: 统计投递数量
+    activate Service
+    Service->>DeliveryDao: 统计用户投递记录数
+    activate DeliveryDao
+    DeliveryDao-->>Service: 投递总数
+    deactivate DeliveryDao
+    Service-->>Service: 返回投递数
+    deactivate Service
+
+    %% 统计面试
+    Service->>Service: 统计面试邀约数量
+    activate Service
+    Service->>DeliveryDao: 统计status='INTERVIEW'的记录
+    activate DeliveryDao
+    DeliveryDao-->>Service: 邀约数量
+    deactivate DeliveryDao
+    Service-->>Service: 返回邀约数
+    deactivate Service
+
+    %% 统计收藏
+    Service->>Service: 统计收藏职位数量
+    activate Service
+    Service->>JobDao: 统计用户收藏记录数
+    activate JobDao
+    JobDao-->>Service: 收藏数量
+    deactivate JobDao
+    Service-->>Service: 返回收藏数
+    deactivate Service
+
+    Service->>Service: 组装统计结果DTO
+    Service-->>Controller: 返回个人统计数据
+    deactivate Service
+    Controller-->>User: 展示统计卡片<br/>(投递X次/邀约X次/收藏X个)
+    deactivate Controller

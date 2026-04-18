@@ -1,0 +1,169 @@
+sequenceDiagram
+    participant User as 求职者
+    participant Controller as ResumeController
+    participant Service as ResumeService
+    participant Dao as ResumeDao
+    participant FileService as FileStorageService
+    participant Auth as 统一权限接口
+
+    %% ==========================================
+    %% 1. 在线创建简历
+    %% ==========================================
+    Note over User, Auth: 在线创建简历
+    User->>Controller: 填写简历信息<br/>(基础信息/教育/工作/技能/自我评价)
+    activate Controller
+
+    Controller->>Auth: 验证用户身份
+    activate Auth
+    Auth-->>Controller: 身份验证通过
+    deactivate Auth
+
+    Controller->>Service: 创建简历(简历DTO)
+    activate Service
+    Service->>Service: 数据校验与格式化
+    Service->>Dao: 插入简历主表
+    activate Dao
+    Dao-->>Service: 返回简历ID
+    deactivate Dao
+
+    Service->>Dao: 插入教育经历
+    Service->>Dao: 插入工作经历
+    Service->>Dao: 插入技能证书
+    deactivate Service
+
+    Service-->>Controller: 返回创建成功及简历ID
+    Controller-->>User: 显示简历创建成功
+    deactivate Controller
+
+    %% ==========================================
+    %% 2. 编辑简历
+    %% ==========================================
+    Note over User, Dao: 编辑简历
+    User->>Controller: 修改简历信息
+    activate Controller
+
+    Controller->>Service: 修改简历(简历ID, 简历DTO)
+    activate Service
+
+    Service->>Dao: 查询原简历信息
+    activate Dao
+    Dao-->>Service: 返回原简历
+    deactivate Dao
+
+    Service->>Dao: 更新简历主表
+    Service->>Dao: 同步更新子表<br/>(删除旧记录+插入新记录)
+    deactivate Service
+
+    Service-->>Controller: 更新成功
+    Controller-->>User: 显示保存成功
+    deactivate Controller
+
+    %% ==========================================
+    %% 3. 删除简历
+    %% ==========================================
+    Note over User, Dao: 删除简历
+    User->>Controller: 选择简历并删除
+    activate Controller
+
+    Controller->>Service: 删除简历(简历ID)
+    activate Service
+
+    Service->>Dao: 检查简历是否属于当前用户
+    activate Dao
+    Dao-->>Service: 验证通过
+    deactivate Dao
+
+    Service->>Dao: 逻辑删除简历<br/>(设置is_deleted=1)
+    Service->>Dao: 关联删除子表数据
+    deactivate Service
+
+    Service-->>Controller: 删除成功
+    Controller-->>User: 确认删除
+    deactivate Controller
+
+    %% ==========================================
+    %% 4. 预览简历
+    %% ==========================================
+    Note over User, Dao: 预览简历
+    User->>Controller: 点击预览简历
+    activate Controller
+
+    Controller->>Service: 预览简历(简历ID)
+    activate Service
+
+    Service->>Dao: 查询简历完整信息<br/>(含所有子表)
+    activate Dao
+    Dao-->>Service: 返回完整简历数据
+    deactivate Dao
+
+    Service->>Service: 组装简历视图模型
+    deactivate Service
+
+    Service-->>Controller: 返回预览数据
+    Controller-->>User: 展示简历预览页
+    deactivate Controller
+
+    %% ==========================================
+    %% 5. 导出PDF
+    %% ==========================================
+    Note over User, Service: 导出PDF
+    User->>Controller: 点击导出
+    activate Controller
+
+    Controller->>Service: 导出简历(简历ID)
+    activate Service
+
+    Service->>Dao: 查询简历完整信息
+    activate Dao
+    Dao-->>Service: 返回简历数据
+    deactivate Dao
+
+    Service->>Service: 生成PDF文档
+    deactivate Service
+
+    Service-->>Controller: 返回PDF文件流
+    Controller-->>User: 下载PDF文件
+    deactivate Controller
+
+    %% ==========================================
+    %% 6. 简历隐私设置
+    %% ==========================================
+    Note over User, Dao: 简历隐私设置
+    User->>Controller: 修改隐私设置<br/>(公开/仅企业可见/隐藏)
+    activate Controller
+
+    Controller->>Service: 修改隐私设置(简历ID, 公开程度)
+    activate Service
+
+    Service->>Dao: 更新简历隐私字段
+    activate Dao
+    Dao-->>Service: 更新成功
+    deactivate Dao
+    deactivate Service
+
+    Service-->>Controller: 设置成功
+    Controller-->>User: 保存成功
+    deactivate Controller
+
+    %% ==========================================
+    %% 7. 附件上传
+    %% ==========================================
+    Note over User, FileService: 附件上传
+    User->>Controller: 上传简历附件(PDF/Word)
+    activate Controller
+
+    Controller->>Service: 上传简历附件(简历ID, 文件)
+    activate Service
+
+    Service->>Service: 校验文件格式和大小
+    Service->>FileService: 上传文件至OSS/本地存储
+    activate FileService
+    FileService-->>Service: 返回文件URL
+    deactivate FileService
+
+    Service->>Dao: 保存附件记录<br/>(文件名、URL、上传时间)
+    deactivate Service
+
+    Service-->>Controller: 返回附件信息
+    Controller-->>User: 显示上传成功
+    deactivate Controller

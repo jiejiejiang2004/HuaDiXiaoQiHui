@@ -1,0 +1,50 @@
+sequenceDiagram
+    participant User as 用户
+    participant Controller as StatisticsController
+    participant Service as StatisticsService
+    participant StatisticsDao as StatisticsDao
+    participant DeliveryDao as DeliveryDao
+    participant JobDao as JobDao
+
+    Note over User, JobDao: 企业用户统计
+    User->>Controller: 进入"企业统计"页面
+    activate Controller
+    Controller->>Service: 获取企业数据
+    activate Service
+
+    %% 统计浏览量
+    Service->>Service: 统计职位总浏览量
+    activate Service
+    Service->>JobDao: SUM(view_count)
+    activate JobDao
+    JobDao-->>Service: 总浏览量
+    deactivate JobDao
+    Service-->>Service: 返回浏览量
+    deactivate Service
+
+    %% 统计接收量
+    Service->>Service: 统计简历接收量
+    activate Service
+    Service->>DeliveryDao: 统计投递给该企业的记录
+    activate DeliveryDao
+    DeliveryDao-->>Service: 简历接收数
+    deactivate DeliveryDao
+    Service-->>Service: 返回接收数
+    deactivate Service
+
+    %% 统计邀约与转化
+    Service->>Service: 统计面试邀约量
+    activate Service
+    Service->>DeliveryDao: 统计status='INTERVIEW'的记录
+    activate DeliveryDao
+    DeliveryDao-->>Service: 邀约数
+    deactivate DeliveryDao
+    Service-->>Service: 返回邀约数
+    deactivate Service
+
+    Service->>Service: 计算转化率<br/>(邀约数/接收数)
+
+    Service-->>Controller: 返回企业统计数据
+    deactivate Service
+    Controller-->>User: 展示企业统计卡片
+    deactivate Controller

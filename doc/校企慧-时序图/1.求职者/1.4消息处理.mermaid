@@ -1,0 +1,131 @@
+sequenceDiagram
+    participant User as 求职者
+    participant Controller as PersonalMessageController
+    participant Service as PersonalMessageService
+    participant Dao as PersonalMessageDao
+    participant NoticeService as NoticeService
+    participant SMS as 短信接口
+
+    %% ==========================================
+    %% 1. 获取消息列表
+    %% ==========================================
+    Note over User, SMS: 获取消息列表
+    User->>Controller: 进入消息中心
+    activate Controller
+    Controller->>Service: 获取消息列表(用户Id, 消息类型)
+    activate Service
+
+    Service->>Dao: 分页查询消息记录<br/>(按时间倒序)
+    activate Dao
+    Dao-->>Service: 返回消息列表
+    deactivate Dao
+
+    Service->>Service: 消息分类处理<br/>(面试邀约/企业回复/系统通知)
+    Service->>Service: 格式化时间显示<br/>(今天/昨天/更早)
+
+    Service-->>Controller: 返回分页消息数据
+    deactivate Service
+    Controller-->>User: 展示消息列表
+    deactivate Controller
+
+    %% ==========================================
+    %% 2. 按分类筛选消息
+    %% ==========================================
+    Note over User, SMS: 按分类筛选消息
+    User->>Controller: 点击分类标签<br/>(面试邀约/企业回复/系统通知)
+    activate Controller
+    Controller->>Service: getMessagesByType(userId, category)
+    activate Service
+
+    Service->>Dao: 按类型查询消息
+    activate Dao
+    Dao-->>Service: 返回筛选后的消息
+    deactivate Dao
+
+    Service-->>Controller: 返回分类消息
+    deactivate Service
+    Controller-->>User: 刷新消息列表
+    deactivate Controller
+
+    %% ==========================================
+    %% 3. 标记单条消息为已读
+    %% ==========================================
+    Note over User, SMS: 标记单条消息为已读
+    User->>Controller: 点击查看消息详情
+    activate Controller
+    Controller->>Service: 标记已读(消息Id, 用户Id)
+    activate Service
+
+    Service->>Dao: 校验消息归属用户
+    activate Dao
+    Dao-->>Service: 验证通过
+    deactivate Dao
+
+    Service->>Dao: 更新is_read=1, read_time=now()
+    activate Dao
+    Dao-->>Service: 更新成功
+    deactivate Dao
+
+    Service->>Dao: 查询消息详情内容
+    activate Dao
+    Dao-->>Service: 返回消息内容
+    deactivate Dao
+
+    Service-->>Controller: 返回消息详情
+    deactivate Service
+    Controller-->>User: 展示消息详情<br/>(同时标记为已读)
+    deactivate Controller
+
+    %% ==========================================
+    %% 4. 删除消息
+    %% ==========================================
+    Note over User, SMS: 删除消息
+    User->>Controller: 删除单条消息
+    activate Controller
+    Controller->>Service: 删除消息(messageId, userId)
+    activate Service
+
+    Service->>Dao: 校验消息归属
+    activate Dao
+    Dao-->>Service: 验证通过
+    deactivate Dao
+
+    alt 物理删除
+        Service->>Dao: DELETE from message
+    else 逻辑删除
+        Service->>Dao: 更新is_deleted=1
+    end
+    activate Dao
+    Dao-->>Service: 删除成功
+    deactivate Dao
+
+    Service-->>Controller: 删除成功
+    deactivate Service
+    Controller-->>User: 消息已删除
+    deactivate Controller
+
+    %% ==========================================
+    %% 5. 接收实时消息推送
+    %% ==========================================
+    Note over User, SMS: 接收实时消息推送
+    Note right of NoticeService: 异步接收业务消息
+    NoticeService->>NoticeService: 接收简历投递反馈事件
+    NoticeService->>NoticeService: 接收面试邀约事件
+    NoticeService->>NoticeService: 接收系统通知事件
+
+    NoticeService->>Dao: 插入消息记录<br/>(类型、标题、内容、用户ID)
+    activate Dao
+    Dao-->>NoticeService: 保存成功
+    deactivate Dao
+
+    alt 用户在线(WebSocket)
+        NoticeService->>Controller: 推送实时消息
+        activate Controller
+        Controller-->>User: 显示新消息红点提示
+        deactivate Controller
+    else 需要短信通知(可选)
+        NoticeService->>SMS: 发送短信通知
+        activate SMS
+        SMS-->>NoticeService: 发送成功
+        deactivate SMS
+    end
