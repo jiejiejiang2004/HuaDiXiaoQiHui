@@ -8,6 +8,8 @@
       @search="goJobsSearch"
     />
 
+    <SwanHowItWorks />
+
     <SwanJobListSection
       heading="最新职位"
       :jobs="jobs"
@@ -65,6 +67,7 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 import { useRouter } from "vue-router";
 import SwanHeroSection from "@/components/swan/SwanHeroSection.vue";
+import SwanHowItWorks from "@/components/swan/SwanHowItWorks.vue";
 import SwanJobListSection from "@/components/swan/SwanJobListSection.vue";
 import type { SwanJobSummary } from "@/components/swan/types";
 import {

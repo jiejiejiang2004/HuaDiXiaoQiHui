@@ -206,10 +206,7 @@
           class="swan-hero__stat"
           role="listitem"
         >
-          <div
-            class="swan-hero__stat-icon"
-            :class="`swan-hero__stat-icon--${item.variant}`"
-          >
+          <div class="swan-hero__stat-icon">
             <span
               :class="`swan-hero__stat-glyph swan-hero__stat-glyph--${item.icon}`"
               aria-hidden="true"
@@ -268,21 +265,18 @@ const statItems = computed(() => {
       label: "入驻企业",
       value: formatStat(brief?.enterpriseCount, loading),
       icon: "building" as const,
-      variant: "solid" as const,
     },
     {
       key: "job",
       label: "岗位总数",
       value: formatStat(brief?.jobCount, loading),
       icon: "case" as const,
-      variant: "soft" as const,
     },
     {
       key: "cand",
       label: "注册求职者",
       value: formatStat(brief?.candidateCount, loading),
       icon: "people" as const,
-      variant: "soft" as const,
     },
   ];
 });
@@ -464,16 +458,15 @@ const statItems = computed(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-}
-
-.swan-hero__stat-icon--soft {
   background: #eff6ff;
   border: 1px solid #dbeafe;
+  cursor: default;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.swan-hero__stat-icon--solid {
+.swan-hero__stat:hover .swan-hero__stat-icon {
   background: var(--jb-primary);
-  border: 1px solid var(--jb-primary);
+  border-color: var(--jb-primary);
   box-shadow: 0 4px 12px rgba(10, 101, 204, 0.22);
 }
 
@@ -484,9 +477,10 @@ const statItems = computed(() => {
   mask-size: contain;
   mask-repeat: no-repeat;
   mask-position: center;
+  transition: background 0.2s ease;
 }
 
-.swan-hero__stat-icon--solid .swan-hero__stat-glyph {
+.swan-hero__stat:hover .swan-hero__stat-glyph {
   background: #fff;
 }
 
