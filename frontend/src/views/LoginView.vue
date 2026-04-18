@@ -443,15 +443,17 @@ async function submitResetPassword() {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  padding: 24px;
-  background: linear-gradient(135deg, #eff6ff, #ecfeff);
+  min-height: calc(100vh - 120px);
+  padding: 32px 24px 48px;
+  background: linear-gradient(160deg, #ecfdf5 0%, #f3f4f6 50%, #e2e8f0 100%);
 }
 
 .login-card {
   width: 100%;
   max-width: 640px;
-  border-radius: 20px;
+  border-radius: var(--jb-radius-lg, 20px);
+  border: 1px solid var(--jb-border, #e2e8f0);
+  box-shadow: var(--jb-shadow-md, 0 12px 40px -12px rgba(15, 23, 42, 0.12));
 }
 
 .card-header {
@@ -467,7 +469,7 @@ async function submitResetPassword() {
 
 .card-header p {
   margin: 0;
-  color: #6b7280;
+  color: var(--jb-text-muted, #64748b);
 }
 
 .action-row {
