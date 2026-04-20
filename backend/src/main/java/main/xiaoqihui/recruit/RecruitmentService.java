@@ -1276,6 +1276,9 @@ public class RecruitmentService {
         StringBuilder html = new StringBuilder();
         html.append("""
             <html>
+            <head>
+              <meta charset="UTF-8"></meta>
+            </head>
             <body style="font-family:Arial,'Microsoft YaHei',sans-serif;color:#1f2937;padding:24px;">
             <div style="max-width:860px;margin:0 auto;">
               <h1 style="margin-bottom:8px;">校企慧简历导出</h1>
@@ -1283,6 +1286,7 @@ public class RecruitmentService {
               <table style="width:100%%;border-collapse:collapse;margin-bottom:24px;">
                 <tr><td style="padding:8px;border:1px solid #e5e7eb;">姓名</td><td style="padding:8px;border:1px solid #e5e7eb;">%s</td><td style="padding:8px;border:1px solid #e5e7eb;">电话</td><td style="padding:8px;border:1px solid #e5e7eb;">%s</td></tr>
                 <tr><td style="padding:8px;border:1px solid #e5e7eb;">邮箱</td><td style="padding:8px;border:1px solid #e5e7eb;">%s</td><td style="padding:8px;border:1px solid #e5e7eb;">现居城市</td><td style="padding:8px;border:1px solid #e5e7eb;">%s</td></tr>
+                <tr><td style="padding:8px;border:1px solid #e5e7eb;">性别</td><td style="padding:8px;border:1px solid #e5e7eb;">%s</td><td style="padding:8px;border:1px solid #e5e7eb;">出生日期</td><td style="padding:8px;border:1px solid #e5e7eb;">%s</td></tr>
               </table>
               <h2>求职意向</h2>
               <p>期望职位：%s</p>
@@ -1296,6 +1300,8 @@ public class RecruitmentService {
             escapeHtml(basicInfo.get("mobile")),
             escapeHtml(basicInfo.get("email")),
             escapeHtml(basicInfo.get("currentCity")),
+            escapeHtml(basicInfo.get("gender")),
+            escapeHtml(basicInfo.get("birthday")),
             escapeHtml(jobIntention.get("expectPosition")),
             escapeHtml(jobIntention.get("expectIndustry")),
             escapeHtml(jobIntention.get("expectCity")),
@@ -1314,7 +1320,7 @@ public class RecruitmentService {
 
     private String buildResumeBatchHtml(List<ResumeEntity> resumes) {
         StringBuilder html = new StringBuilder();
-        html.append("<html><body style=\"font-family:Arial,'Microsoft YaHei',sans-serif;color:#1f2937;padding:24px;\">");
+        html.append("<html><head><meta charset=\"UTF-8\"></meta></head><body style=\"font-family:Arial,'Microsoft YaHei',sans-serif;color:#1f2937;padding:24px;\">");
         for (int i = 0; i < resumes.size(); i++) {
             Map<String, Object> detail = buildResumeDetail(resumes.get(i));
             Map<String, Object> basicInfo = castMap(detail.get("basicInfo"));
@@ -1329,7 +1335,11 @@ public class RecruitmentService {
                 .append("<tr><td style=\"padding:8px;border:1px solid #e5e7eb;\">姓名</td><td style=\"padding:8px;border:1px solid #e5e7eb;\">").append(escapeHtml(basicInfo.get("name"))).append("</td>")
                 .append("<td style=\"padding:8px;border:1px solid #e5e7eb;\">电话</td><td style=\"padding:8px;border:1px solid #e5e7eb;\">").append(escapeHtml(basicInfo.get("mobile"))).append("</td></tr>")
                 .append("<tr><td style=\"padding:8px;border:1px solid #e5e7eb;\">邮箱</td><td style=\"padding:8px;border:1px solid #e5e7eb;\">").append(escapeHtml(basicInfo.get("email"))).append("</td>")
-                .append("<td style=\"padding:8px;border:1px solid #e5e7eb;\">期望职位</td><td style=\"padding:8px;border:1px solid #e5e7eb;\">").append(escapeHtml(jobIntention.get("expectPosition"))).append("</td></tr>")
+                .append("<td style=\"padding:8px;border:1px solid #e5e7eb;\">现居城市</td><td style=\"padding:8px;border:1px solid #e5e7eb;\">").append(escapeHtml(basicInfo.get("currentCity"))).append("</td></tr>")
+                .append("<tr><td style=\"padding:8px;border:1px solid #e5e7eb;\">性别</td><td style=\"padding:8px;border:1px solid #e5e7eb;\">").append(escapeHtml(basicInfo.get("gender"))).append("</td>")
+                .append("<td style=\"padding:8px;border:1px solid #e5e7eb;\">出生日期</td><td style=\"padding:8px;border:1px solid #e5e7eb;\">").append(escapeHtml(basicInfo.get("birthday"))).append("</td></tr>")
+                .append("<tr><td style=\"padding:8px;border:1px solid #e5e7eb;\">期望职位</td><td style=\"padding:8px;border:1px solid #e5e7eb;\">").append(escapeHtml(jobIntention.get("expectPosition"))).append("</td>")
+                .append("<td style=\"padding:8px;border:1px solid #e5e7eb;\">期望城市</td><td style=\"padding:8px;border:1px solid #e5e7eb;\">").append(escapeHtml(jobIntention.get("expectCity"))).append("</td></tr>")
                 .append("</table><h2>教育经历</h2>");
             appendSectionList(html, educationList, "school", "major", "degree", "startDate", "endDate");
             html.append("<h2>工作经历</h2>");

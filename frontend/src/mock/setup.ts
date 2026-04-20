@@ -147,7 +147,7 @@ function mockJobSearch(config: AxiosRequestConfig): {
 export function setupMocks(api: AxiosInstance): void {
   const mock = new MockAdapter(api, { delayResponse: 120 });
 
-  mock.onAny().reply((config) => {
+  mock.onAny().reply((config: AxiosRequestConfig) => {
     const method = (config.method || "get").toUpperCase();
     const path = normPath(config);
 
