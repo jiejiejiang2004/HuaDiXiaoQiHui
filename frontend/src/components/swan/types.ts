@@ -15,6 +15,13 @@ export interface SwanJobSummary {
   responsibility?: string;
   requirement?: string;
   collected?: boolean;
+  /** 详情页：发布时间、截止、职级、精选等（后端可选） */
+  jobPostedAt?: string;
+  jobExpireAt?: string;
+  jobLevel?: string;
+  featured?: boolean;
+  /** 加分项 / 优先条件 */
+  desirable?: string;
 }
 
 export interface SwanJobFilters {

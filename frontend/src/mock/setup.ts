@@ -2,6 +2,31 @@ import type { AxiosInstance, AxiosRequestConfig } from "axios";
 import MockAdapter from "axios-mock-adapter";
 import * as D from "./data";
 
+type MockLoginPersona = "none" | "candidate1" | "enterprise2" | "admin3";
+
+let mockLoginPersona: MockLoginPersona = "none";
+
+function parsePostBody(config: AxiosRequestConfig): Record<string, unknown> {
+  try {
+    const raw = config.data;
+    if (typeof raw === "string" && raw) {
+      return JSON.parse(raw) as Record<string, unknown>;
+    }
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      return raw as Record<string, unknown>;
+    }
+  } catch {
+    // ignore
+  }
+  return {};
+}
+
+function authFail(
+  message: string
+): [number, { code: number; message: string; data: null }] {
+  return [200, { code: 1001, message, data: null }];
+}
+
 function ok<T>(data: T): [number, { code: number; message: string; data: T }] {
   return [200, { code: 0, message: "ok", data }];
 }
@@ -41,7 +66,22 @@ function jobDetail(jobId: number) {
   if (!base) {
     return null;
   }
-  return { ...base, collected: collectedJobIds.has(jobId) };
+  const idx = Math.max(
+    0,
+    D.MOCK_JOBS.findIndex((j) => j.jobId === jobId)
+  );
+  const jobType = MOCK_JOB_TYPES[idx % MOCK_JOB_TYPES.length];
+  return {
+    ...base,
+    jobType,
+    collected: collectedJobIds.has(jobId),
+    jobPostedAt: "2026-04-01",
+    jobExpireAt: "2026-06-30",
+    jobLevel: base.experience === "应届" ? "入门" : "中级",
+    featured: idx % 4 === 0,
+    desirable:
+      "具备良好沟通与文档能力；有校招或招聘类产品经验者优先；可接受短期出差。",
+  };
 }
 
 /** 与首页 searchJobs 传参一致：支持 config.params 或拼在 url 上的 query */
@@ -132,6 +172,19 @@ export function setupMocks(api: AxiosInstance): void {
     }
 
     if (method === "POST" && path === "/user/login/password") {
+      const body = parsePostBody(config);
+      const tc = D.MOCK_TEST_LOGIN.candidate;
+      if (String(body.mobile ?? "").trim() === tc.mobile) {
+        if (String(body.password ?? "") !== tc.password) {
+          return authFail("账号或密码错误");
+        }
+        mockLoginPersona = "candidate1";
+        return ok({
+          ...tokens(),
+          userName: tc.userName,
+        });
+      }
+      mockLoginPersona = "none";
       return ok({
         ...tokens(),
         userName: "张同学（Mock）",
@@ -139,6 +192,7 @@ export function setupMocks(api: AxiosInstance): void {
     }
 
     if (method === "POST" && path === "/user/login/email") {
+      mockLoginPersona = "none";
       return ok({
         ...tokens(),
         userName: "张同学（邮箱登录 Mock）",
@@ -146,6 +200,7 @@ export function setupMocks(api: AxiosInstance): void {
     }
 
     if (method === "POST" && path === "/user/register") {
+      mockLoginPersona = "none";
       return ok({
         ...tokens(),
         userName: "新注册用户",
@@ -153,6 +208,19 @@ export function setupMocks(api: AxiosInstance): void {
     }
 
     if (method === "POST" && path === "/enterprise/login") {
+      const body = parsePostBody(config);
+      const te = D.MOCK_TEST_LOGIN.enterprise;
+      if (String(body.mobile ?? "").trim() === te.mobile) {
+        if (String(body.password ?? "") !== te.password) {
+          return authFail("账号或密码错误");
+        }
+        mockLoginPersona = "enterprise2";
+        return ok({
+          ...tokens(),
+          userName: te.userName,
+        });
+      }
+      mockLoginPersona = "none";
       return ok({
         ...tokens(),
         userName: "成都校企科技有限公司",
@@ -160,6 +228,7 @@ export function setupMocks(api: AxiosInstance): void {
     }
 
     if (method === "POST" && path === "/enterprise/register") {
+      mockLoginPersona = "none";
       return ok({
         ...tokens(),
         userName: "新注册企业",
@@ -167,6 +236,19 @@ export function setupMocks(api: AxiosInstance): void {
     }
 
     if (method === "POST" && path === "/admin/login") {
+      const body = parsePostBody(config);
+      const ta = D.MOCK_TEST_LOGIN.admin;
+      if (String(body.mobile ?? "").trim() === ta.mobile) {
+        if (String(body.password ?? "") !== ta.password) {
+          return authFail("账号或密码错误");
+        }
+        mockLoginPersona = "admin3";
+        return ok({
+          ...tokens(),
+          userName: ta.userName,
+        });
+      }
+      mockLoginPersona = "none";
       return ok({
         ...tokens(),
         userName: "平台管理员（Mock）",
@@ -189,6 +271,7 @@ export function setupMocks(api: AxiosInstance): void {
     }
 
     if (method === "POST" && path === "/user/logout") {
+      mockLoginPersona = "none";
       return ok(null);
     }
 
@@ -251,6 +334,9 @@ export function setupMocks(api: AxiosInstance): void {
     }
 
     if (method === "GET" && path === "/user/profile") {
+      if (mockLoginPersona === "candidate1") {
+        return ok(D.MOCK_PROFILE_TEST_CANDIDATE_1);
+      }
       return ok(D.MOCK_PROFILE);
     }
 
@@ -259,10 +345,17 @@ export function setupMocks(api: AxiosInstance): void {
     }
 
     if (method === "GET" && path === "/resume/my") {
+      if (mockLoginPersona === "candidate1") {
+        return ok({ list: [D.MOCK_RESUME_LIST_ITEM_TEST_1], total: 1 });
+      }
       return ok({ list: [D.MOCK_RESUME_LIST_ITEM], total: 1 });
     }
 
     if (method === "GET" && /^\/resume\/\d+$/.test(path)) {
+      const resumeId = Number(path.split("/").pop());
+      if (mockLoginPersona === "candidate1" && resumeId === 7001) {
+        return ok(D.MOCK_RESUME_DETAIL_TEST_1);
+      }
       return ok(D.MOCK_RESUME_DETAIL);
     }
 
@@ -347,6 +440,12 @@ export function setupMocks(api: AxiosInstance): void {
     }
 
     if (method === "GET" && path === "/enterprise/info") {
+      if (mockLoginPersona === "enterprise2") {
+        return ok({
+          ...D.MOCK_ENTERPRISE_INFO_TEST_2,
+          ...D.MOCK_ENTERPRISE_AUTH,
+        });
+      }
       return ok({ ...D.MOCK_ENTERPRISE_INFO, ...D.MOCK_ENTERPRISE_AUTH });
     }
 

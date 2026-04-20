@@ -1,527 +1,1248 @@
 <template>
-  <div class="admin-page">
-    <div class="page-header">
-      <div>
-        <h1>管理员后台</h1>
-        <p>二期聚焦用户管理、审核流和系统管理</p>
-      </div>
-      <div class="header-actions">
-        <el-button @click="$router.push('/')">返回首页</el-button>
-        <el-button type="danger" plain @click="logout">退出</el-button>
-      </div>
-    </div>
-
-    <el-tabs v-model="activeTab" class="admin-tabs">
-      <el-tab-pane label="求职者管理" name="candidate">
-        <div class="toolbar">
-          <el-input
-            v-model="candidateQuery.keyword"
-            placeholder="姓名/手机号"
-            clearable
-          />
-          <el-select
-            v-model="candidateQuery.status"
-            placeholder="状态"
-            clearable
-          >
-            <el-option label="ACTIVE" value="ACTIVE" />
-            <el-option label="DISABLED" value="DISABLED" />
-          </el-select>
-          <el-button type="primary" @click="loadCandidates">查询</el-button>
-        </div>
-        <el-table :data="candidates" stripe>
-          <el-table-column prop="realName" label="姓名" />
-          <el-table-column prop="mobile" label="手机号" />
-          <el-table-column prop="identityType" label="身份" />
-          <el-table-column prop="status" label="状态" width="120" />
-          <el-table-column label="操作" width="240">
-            <template #default="{ row }">
-              <el-button
-                text
-                type="primary"
-                @click="openCandidateDetail(row.userId)"
-                >详情</el-button
+  <div class="workbench-shell">
+    <WorkbenchSidebar
+      brand-label="管理员后台"
+      :tabs="tabItems"
+      :active-key="activeTab"
+      nav-panel-id="admin-nav-panel"
+      aria-label="管理员导航"
+      @select="onWorkbenchSelect"
+      @logout="logout"
+    />
+    <div class="workbench-main">
+      <header class="workbench-main__top">
+        <h1 class="workbench-main__hello">管理员工作台</h1>
+        <p class="workbench-main__sub">用户管理、审核流与系统配置</p>
+      </header>
+      <div class="workbench-panels">
+        <section v-show="activeTab === 'candidate'">
+          <h2 class="workbench-panel__title">
+            求职者管理
+            <span class="workbench-panel__count"
+              >（{{ candidates.length }}）</span
+            >
+          </h2>
+          <p class="workbench-panel__desc">
+            查询求职者账号，查看详情并调整启用状态。
+          </p>
+          <el-card shadow="never" class="workbench-card">
+            <div class="workbench-card-toolbar">
+              <el-input
+                v-model="candidateQuery.keyword"
+                placeholder="姓名/手机号"
+                clearable
+              />
+              <el-select
+                v-model="candidateQuery.status"
+                placeholder="状态"
+                clearable
               >
-              <el-button
-                text
-                type="warning"
-                @click="changeCandidateStatus(row)"
+                <el-option label="ACTIVE" value="ACTIVE" />
+                <el-option label="DISABLED" value="DISABLED" />
+              </el-select>
+              <el-button type="primary" @click="loadCandidates">查询</el-button>
+            </div>
+            <template v-if="candidates.length">
+              <div
+                class="workbench-data-list wb-list--admin-candidates"
+                role="table"
               >
-                {{ row.status === "ACTIVE" ? "禁用" : "启用" }}
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-tab-pane>
-
-      <el-tab-pane label="企业管理" name="enterprise">
-        <div class="toolbar">
-          <el-input
-            v-model="enterpriseQuery.keyword"
-            placeholder="企业名称"
-            clearable
-          />
-          <el-select
-            v-model="enterpriseQuery.authStatus"
-            placeholder="认证状态"
-            clearable
-          >
-            <el-option label="PENDING" value="PENDING" />
-            <el-option label="PASS" value="PASS" />
-            <el-option label="REJECT" value="REJECT" />
-          </el-select>
-          <el-button type="primary" @click="loadEnterprises">查询</el-button>
-        </div>
-        <el-table :data="enterprises" stripe>
-          <el-table-column prop="companyName" label="企业名称" />
-          <el-table-column prop="industry" label="行业" />
-          <el-table-column prop="authStatus" label="认证状态" width="120" />
-          <el-table-column prop="status" label="账号状态" width="120" />
-          <el-table-column label="操作" width="320">
-            <template #default="{ row }">
-              <el-button
-                text
-                type="success"
-                @click="handleEnterpriseAudit(row.enterpriseId, 'PASS')"
-                >通过</el-button
-              >
-              <el-button
-                text
-                type="danger"
-                @click="handleEnterpriseAudit(row.enterpriseId, 'REJECT')"
-                >驳回</el-button
-              >
-              <el-button
-                text
-                type="warning"
-                @click="changeEnterpriseStatus(row)"
-              >
-                {{ row.status === "ACTIVE" ? "禁用" : "启用" }}
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-tab-pane>
-
-      <el-tab-pane label="职位审核" name="job-audit">
-        <div class="toolbar">
-          <el-select
-            v-model="jobAuditQuery.status"
-            placeholder="审核状态"
-            clearable
-          >
-            <el-option label="PENDING" value="PENDING" />
-            <el-option label="PASSED" value="PASSED" />
-            <el-option label="REJECTED" value="REJECTED" />
-          </el-select>
-          <el-input
-            v-model="jobAuditQuery.companyName"
-            placeholder="企业名称"
-            clearable
-          />
-          <el-button type="primary" @click="loadAuditJobs">查询</el-button>
-        </div>
-        <el-table :data="auditJobs" stripe>
-          <el-table-column prop="jobName" label="职位" />
-          <el-table-column prop="companyName" label="企业" />
-          <el-table-column prop="status" label="状态" width="120" />
-          <el-table-column prop="auditRemark" label="审核备注" />
-          <el-table-column label="操作" width="220">
-            <template #default="{ row }">
-              <el-button
-                text
-                type="success"
-                @click="runSafely(() => handleJobAudit(row.jobId, 'PASS'))"
-                >通过</el-button
-              >
-              <el-button
-                text
-                type="danger"
-                @click="runSafely(() => handleJobAudit(row.jobId, 'REJECT'))"
-                >驳回</el-button
-              >
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-tab-pane>
-
-      <el-tab-pane label="公告管理" name="notice">
-        <el-row :gutter="16">
-          <el-col :span="10">
-            <el-card shadow="hover">
-              <template #header>发布公告</template>
-              <el-form label-position="top" :model="noticeForm">
-                <el-form-item label="标题">
-                  <el-input v-model="noticeForm.title" />
-                </el-form-item>
-                <el-form-item label="类型">
-                  <el-select v-model="noticeForm.type">
-                    <el-option label="JOB_FAIR" value="JOB_FAIR" />
-                    <el-option label="POLICY" value="POLICY" />
-                    <el-option label="COOPERATION" value="COOPERATION" />
-                  </el-select>
-                </el-form-item>
-                <el-form-item label="状态">
-                  <el-select v-model="noticeForm.status">
-                    <el-option label="PENDING" value="PENDING" />
-                    <el-option label="ONLINE" value="ONLINE" />
-                  </el-select>
-                </el-form-item>
-                <el-form-item label="内容">
-                  <el-input
-                    v-model="noticeForm.content"
-                    type="textarea"
-                    :rows="5"
-                  />
-                </el-form-item>
-                <el-button type="primary" @click="runSafely(saveNotice)"
-                  >保存公告</el-button
+                <div
+                  class="workbench-data-list__tr workbench-data-list__tr--head"
+                  role="row"
                 >
-              </el-form>
-            </el-card>
-          </el-col>
-          <el-col :span="14">
-            <el-card shadow="hover">
-              <template #header>公告审核 / 列表</template>
-              <el-table :data="notices" stripe>
-                <el-table-column prop="title" label="标题" />
-                <el-table-column prop="type" label="类型" width="140" />
-                <el-table-column prop="status" label="状态" width="120" />
-                <el-table-column label="操作" width="260">
-                  <template #default="{ row }">
-                    <el-button
-                      text
-                      type="success"
-                      @click="
-                        runSafely(() => handleNoticeAudit(row.noticeId, 'PASS'))
-                      "
-                      >通过</el-button
-                    >
-                    <el-button
-                      text
-                      type="danger"
-                      @click="
-                        runSafely(() =>
-                          handleNoticeAudit(row.noticeId, 'REJECT')
-                        )
-                      "
-                      >驳回</el-button
-                    >
-                    <el-button
-                      text
-                      type="danger"
-                      @click="removeNotice(row.noticeId)"
-                      >删除</el-button
-                    >
-                  </template>
-                </el-table-column>
-              </el-table>
-            </el-card>
-          </el-col>
-        </el-row>
-      </el-tab-pane>
-
-      <el-tab-pane label="分类管理" name="category">
-        <div class="toolbar">
-          <el-input v-model="categoryForm.name" placeholder="分类名称" />
-          <el-input-number v-model="categoryForm.sort" :min="0" />
-          <el-button type="primary" @click="runSafely(saveCategory)"
-            >新增分类</el-button
-          >
-        </div>
-        <el-table :data="categories" stripe>
-          <el-table-column prop="categoryId" label="ID" width="100" />
-          <el-table-column prop="name" label="名称" />
-          <el-table-column prop="sort" label="排序" width="120" />
-          <el-table-column label="操作" width="140">
-            <template #default="{ row }">
-              <el-button
-                text
-                type="danger"
-                @click="removeCategory(row.categoryId)"
-                >删除</el-button
-              >
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-tab-pane>
-
-      <el-tab-pane label="轮播图管理" name="banner">
-        <el-row :gutter="16">
-          <el-col :span="10">
-            <el-card shadow="hover">
-              <template #header>新增轮播图</template>
-              <el-form label-position="top" :model="bannerForm">
-                <el-form-item label="标题">
-                  <el-input v-model="bannerForm.title" />
-                </el-form-item>
-                <el-form-item label="跳转链接">
-                  <el-input
-                    v-model="bannerForm.linkUrl"
-                    placeholder="https://..."
-                  />
-                </el-form-item>
-                <el-form-item label="排序">
-                  <el-input-number v-model="bannerForm.sort" :min="0" />
-                </el-form-item>
-                <el-form-item label="状态">
-                  <el-select v-model="bannerForm.status">
-                    <el-option label="ONLINE" value="ONLINE" />
-                    <el-option label="OFFLINE" value="OFFLINE" />
-                  </el-select>
-                </el-form-item>
-                <el-form-item label="轮播图图片">
-                  <input
-                    type="file"
-                    accept=".jpg,.jpeg,.png"
-                    @change="onBannerFileChange"
-                  />
-                  <p v-if="bannerPreview" class="preview-text">
-                    {{ bannerPreview }}
-                  </p>
-                </el-form-item>
-                <el-button type="primary" @click="runSafely(saveBanner)"
-                  >保存轮播图</el-button
+                  <div class="workbench-data-list__th" role="columnheader">
+                    姓名
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    手机号
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    身份
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    状态
+                  </div>
+                  <div
+                    class="workbench-data-list__th workbench-data-list__cell--action"
+                    role="columnheader"
+                  >
+                    操作
+                  </div>
+                </div>
+                <div
+                  v-for="row in candidates"
+                  :key="row.userId"
+                  class="workbench-data-list__tr"
+                  role="row"
                 >
-              </el-form>
-            </el-card>
-          </el-col>
-          <el-col :span="14">
-            <el-card shadow="hover">
-              <template #header>轮播图列表</template>
-              <el-table :data="banners" stripe>
-                <el-table-column prop="title" label="标题" />
-                <el-table-column prop="status" label="状态" width="120" />
-                <el-table-column prop="sort" label="排序" width="100" />
-                <el-table-column
-                  prop="imageUrl"
-                  label="图片地址"
-                  show-overflow-tooltip
+                  <div class="workbench-data-list__td" role="cell">
+                    <span class="workbench-data-list__primary-title">{{
+                      row.realName
+                    }}</span>
+                  </div>
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--muted"
+                    role="cell"
+                  >
+                    {{ row.mobile }}
+                  </div>
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--muted"
+                    role="cell"
+                  >
+                    {{ row.identityType }}
+                  </div>
+                  <div class="workbench-data-list__td" role="cell">
+                    {{ row.status }}
+                  </div>
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--action"
+                    role="cell"
+                  >
+                    <div class="workbench-data-list__actions">
+                      <el-button
+                        link
+                        type="primary"
+                        @click="openCandidateDetail(row.userId)"
+                        >详情</el-button
+                      >
+                      <el-button
+                        link
+                        type="warning"
+                        @click="changeCandidateStatus(row)"
+                      >
+                        {{ row.status === "ACTIVE" ? "禁用" : "启用" }}
+                      </el-button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <el-empty
+              v-else
+              description="暂无数据"
+              class="workbench-data-list__empty"
+            />
+          </el-card>
+        </section>
+
+        <section v-show="activeTab === 'enterprise'">
+          <h2 class="workbench-panel__title">
+            企业管理
+            <span class="workbench-panel__count"
+              >（{{ enterprises.length }}）</span
+            >
+          </h2>
+          <p class="workbench-panel__desc">企业认证与账号状态管理。</p>
+          <el-card shadow="never" class="workbench-card">
+            <div class="workbench-card-toolbar">
+              <el-input
+                v-model="enterpriseQuery.keyword"
+                placeholder="企业名称"
+                clearable
+              />
+              <el-select
+                v-model="enterpriseQuery.authStatus"
+                placeholder="认证状态"
+                clearable
+              >
+                <el-option label="PENDING" value="PENDING" />
+                <el-option label="PASS" value="PASS" />
+                <el-option label="REJECT" value="REJECT" />
+              </el-select>
+              <el-button type="primary" @click="loadEnterprises"
+                >查询</el-button
+              >
+            </div>
+            <template v-if="enterprises.length">
+              <div
+                class="workbench-data-list wb-list--admin-enterprises"
+                role="table"
+              >
+                <div
+                  class="workbench-data-list__tr workbench-data-list__tr--head"
+                  role="row"
+                >
+                  <div class="workbench-data-list__th" role="columnheader">
+                    企业名称
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    行业
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    认证状态
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    账号状态
+                  </div>
+                  <div
+                    class="workbench-data-list__th workbench-data-list__cell--action"
+                    role="columnheader"
+                  >
+                    操作
+                  </div>
+                </div>
+                <div
+                  v-for="row in enterprises"
+                  :key="row.enterpriseId"
+                  class="workbench-data-list__tr"
+                  role="row"
+                >
+                  <div class="workbench-data-list__td" role="cell">
+                    <span class="workbench-data-list__primary-title">{{
+                      row.companyName
+                    }}</span>
+                  </div>
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--muted"
+                    role="cell"
+                  >
+                    {{ row.industry }}
+                  </div>
+                  <div class="workbench-data-list__td" role="cell">
+                    {{ row.authStatus }}
+                  </div>
+                  <div class="workbench-data-list__td" role="cell">
+                    {{ row.status }}
+                  </div>
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--action"
+                    role="cell"
+                  >
+                    <div class="workbench-data-list__actions">
+                      <el-button
+                        link
+                        type="success"
+                        @click="handleEnterpriseAudit(row.enterpriseId, 'PASS')"
+                        >通过</el-button
+                      >
+                      <el-button
+                        link
+                        type="danger"
+                        @click="
+                          handleEnterpriseAudit(row.enterpriseId, 'REJECT')
+                        "
+                        >驳回</el-button
+                      >
+                      <el-button
+                        link
+                        type="warning"
+                        @click="changeEnterpriseStatus(row)"
+                      >
+                        {{ row.status === "ACTIVE" ? "禁用" : "启用" }}
+                      </el-button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <el-empty
+              v-else
+              description="暂无数据"
+              class="workbench-data-list__empty"
+            />
+          </el-card>
+        </section>
+
+        <section v-show="activeTab === 'job-audit'">
+          <h2 class="workbench-panel__title">
+            职位审核
+            <span class="workbench-panel__count"
+              >（{{ auditJobs.length }}）</span
+            >
+          </h2>
+          <p class="workbench-panel__desc">待审职位与审核结果记录。</p>
+          <el-card shadow="never" class="workbench-card">
+            <div class="workbench-card-toolbar">
+              <el-select
+                v-model="jobAuditQuery.status"
+                placeholder="审核状态"
+                clearable
+              >
+                <el-option label="PENDING" value="PENDING" />
+                <el-option label="PASSED" value="PASSED" />
+                <el-option label="REJECTED" value="REJECTED" />
+              </el-select>
+              <el-input
+                v-model="jobAuditQuery.companyName"
+                placeholder="企业名称"
+                clearable
+              />
+              <el-button type="primary" @click="loadAuditJobs">查询</el-button>
+            </div>
+            <template v-if="auditJobs.length">
+              <div
+                class="workbench-data-list wb-list--admin-job-audit"
+                role="table"
+              >
+                <div
+                  class="workbench-data-list__tr workbench-data-list__tr--head"
+                  role="row"
+                >
+                  <div class="workbench-data-list__th" role="columnheader">
+                    职位
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    企业
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    状态
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    审核备注
+                  </div>
+                  <div
+                    class="workbench-data-list__th workbench-data-list__cell--action"
+                    role="columnheader"
+                  >
+                    操作
+                  </div>
+                </div>
+                <div
+                  v-for="row in auditJobs"
+                  :key="row.jobId"
+                  class="workbench-data-list__tr"
+                  role="row"
+                >
+                  <div class="workbench-data-list__td" role="cell">
+                    <span class="workbench-data-list__primary-title">{{
+                      row.jobName
+                    }}</span>
+                  </div>
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--muted"
+                    role="cell"
+                  >
+                    {{ row.companyName }}
+                  </div>
+                  <div class="workbench-data-list__td" role="cell">
+                    {{ row.status }}
+                  </div>
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--muted"
+                    role="cell"
+                  >
+                    {{ row.auditRemark || "—" }}
+                  </div>
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--action"
+                    role="cell"
+                  >
+                    <div class="workbench-data-list__actions">
+                      <el-button
+                        link
+                        type="success"
+                        @click="
+                          runSafely(() => handleJobAudit(row.jobId, 'PASS'))
+                        "
+                        >通过</el-button
+                      >
+                      <el-button
+                        link
+                        type="danger"
+                        @click="
+                          runSafely(() => handleJobAudit(row.jobId, 'REJECT'))
+                        "
+                        >驳回</el-button
+                      >
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <el-empty
+              v-else
+              description="暂无数据"
+              class="workbench-data-list__empty"
+            />
+          </el-card>
+        </section>
+
+        <section v-show="activeTab === 'notice'">
+          <h2 class="workbench-panel__title">
+            公告管理
+            <span class="workbench-panel__count">（{{ notices.length }}）</span>
+          </h2>
+          <p class="workbench-panel__desc">发布公告并审核平台通知。</p>
+          <el-row :gutter="16">
+            <el-col :span="10">
+              <el-card shadow="never" class="workbench-card">
+                <template #header>发布公告</template>
+                <el-form label-position="top" :model="noticeForm">
+                  <el-form-item label="标题">
+                    <el-input v-model="noticeForm.title" />
+                  </el-form-item>
+                  <el-form-item label="类型">
+                    <el-select v-model="noticeForm.type">
+                      <el-option label="JOB_FAIR" value="JOB_FAIR" />
+                      <el-option label="POLICY" value="POLICY" />
+                      <el-option label="COOPERATION" value="COOPERATION" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="状态">
+                    <el-select v-model="noticeForm.status">
+                      <el-option label="PENDING" value="PENDING" />
+                      <el-option label="ONLINE" value="ONLINE" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="内容">
+                    <el-input
+                      v-model="noticeForm.content"
+                      type="textarea"
+                      :rows="5"
+                    />
+                  </el-form-item>
+                  <el-button type="primary" @click="runSafely(saveNotice)"
+                    >保存公告</el-button
+                  >
+                </el-form>
+              </el-card>
+            </el-col>
+            <el-col :span="14">
+              <el-card shadow="never" class="workbench-card">
+                <template #header>公告审核 / 列表</template>
+                <template v-if="notices.length">
+                  <div
+                    class="workbench-data-list wb-list--admin-notices"
+                    role="table"
+                  >
+                    <div
+                      class="workbench-data-list__tr workbench-data-list__tr--head"
+                      role="row"
+                    >
+                      <div class="workbench-data-list__th" role="columnheader">
+                        标题
+                      </div>
+                      <div class="workbench-data-list__th" role="columnheader">
+                        类型
+                      </div>
+                      <div class="workbench-data-list__th" role="columnheader">
+                        状态
+                      </div>
+                      <div
+                        class="workbench-data-list__th workbench-data-list__cell--action"
+                        role="columnheader"
+                      >
+                        操作
+                      </div>
+                    </div>
+                    <div
+                      v-for="row in notices"
+                      :key="row.noticeId"
+                      class="workbench-data-list__tr"
+                      role="row"
+                    >
+                      <div class="workbench-data-list__td" role="cell">
+                        <span class="workbench-data-list__primary-title">{{
+                          row.title
+                        }}</span>
+                      </div>
+                      <div
+                        class="workbench-data-list__td workbench-data-list__cell--muted"
+                        role="cell"
+                      >
+                        {{ row.type }}
+                      </div>
+                      <div class="workbench-data-list__td" role="cell">
+                        {{ row.status }}
+                      </div>
+                      <div
+                        class="workbench-data-list__td workbench-data-list__cell--action"
+                        role="cell"
+                      >
+                        <div class="workbench-data-list__actions">
+                          <el-button
+                            link
+                            type="success"
+                            @click="
+                              runSafely(() =>
+                                handleNoticeAudit(row.noticeId, 'PASS')
+                              )
+                            "
+                            >通过</el-button
+                          >
+                          <el-button
+                            link
+                            type="danger"
+                            @click="
+                              runSafely(() =>
+                                handleNoticeAudit(row.noticeId, 'REJECT')
+                              )
+                            "
+                            >驳回</el-button
+                          >
+                          <el-button
+                            link
+                            type="danger"
+                            @click="removeNotice(row.noticeId)"
+                            >删除</el-button
+                          >
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+                <el-empty
+                  v-else
+                  description="暂无数据"
+                  class="workbench-data-list__empty"
                 />
-                <el-table-column label="操作" width="120">
-                  <template #default="{ row }">
+              </el-card>
+            </el-col>
+          </el-row>
+        </section>
+
+        <section v-show="activeTab === 'category'">
+          <h2 class="workbench-panel__title">
+            分类管理
+            <span class="workbench-panel__count"
+              >（{{ categories.length }}）</span
+            >
+          </h2>
+          <p class="workbench-panel__desc">维护职位分类与展示顺序。</p>
+          <el-card shadow="never" class="workbench-card">
+            <div class="workbench-card-toolbar">
+              <el-input v-model="categoryForm.name" placeholder="分类名称" />
+              <el-input-number v-model="categoryForm.sort" :min="0" />
+              <el-button type="primary" @click="runSafely(saveCategory)"
+                >新增分类</el-button
+              >
+            </div>
+            <template v-if="categories.length">
+              <div
+                class="workbench-data-list wb-list--admin-categories"
+                role="table"
+              >
+                <div
+                  class="workbench-data-list__tr workbench-data-list__tr--head"
+                  role="row"
+                >
+                  <div class="workbench-data-list__th" role="columnheader">
+                    ID
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    名称
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    排序
+                  </div>
+                  <div
+                    class="workbench-data-list__th workbench-data-list__cell--action"
+                    role="columnheader"
+                  >
+                    操作
+                  </div>
+                </div>
+                <div
+                  v-for="row in categories"
+                  :key="row.categoryId"
+                  class="workbench-data-list__tr"
+                  role="row"
+                >
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--muted"
+                    role="cell"
+                  >
+                    {{ row.categoryId }}
+                  </div>
+                  <div class="workbench-data-list__td" role="cell">
+                    <span class="workbench-data-list__primary-title">{{
+                      row.name
+                    }}</span>
+                  </div>
+                  <div class="workbench-data-list__td" role="cell">
+                    {{ row.sort }}
+                  </div>
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--action"
+                    role="cell"
+                  >
                     <el-button
-                      text
+                      link
                       type="danger"
-                      @click="removeBanner(row.bannerId)"
+                      @click="removeCategory(row.categoryId)"
                       >删除</el-button
                     >
-                  </template>
-                </el-table-column>
-              </el-table>
-            </el-card>
-          </el-col>
-        </el-row>
-      </el-tab-pane>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <el-empty
+              v-else
+              description="暂无数据"
+              class="workbench-data-list__empty"
+            />
+          </el-card>
+        </section>
 
-      <el-tab-pane label="角色权限" name="role">
-        <el-row :gutter="16">
-          <el-col :span="10">
-            <el-card shadow="hover">
-              <template #header>新增角色</template>
-              <el-form label-position="top" :model="roleForm">
-                <el-form-item label="角色名称">
-                  <el-input v-model="roleForm.roleName" />
+        <section v-show="activeTab === 'banner'">
+          <h2 class="workbench-panel__title">
+            轮播图管理
+            <span class="workbench-panel__count">（{{ banners.length }}）</span>
+          </h2>
+          <p class="workbench-panel__desc">配置首页轮播素材与排序。</p>
+          <el-row :gutter="16">
+            <el-col :span="10">
+              <el-card shadow="never" class="workbench-card">
+                <template #header>新增轮播图</template>
+                <el-form label-position="top" :model="bannerForm">
+                  <el-form-item label="标题">
+                    <el-input v-model="bannerForm.title" />
+                  </el-form-item>
+                  <el-form-item label="跳转链接">
+                    <el-input
+                      v-model="bannerForm.linkUrl"
+                      placeholder="https://..."
+                    />
+                  </el-form-item>
+                  <el-form-item label="排序">
+                    <el-input-number v-model="bannerForm.sort" :min="0" />
+                  </el-form-item>
+                  <el-form-item label="状态">
+                    <el-select v-model="bannerForm.status">
+                      <el-option label="ONLINE" value="ONLINE" />
+                      <el-option label="OFFLINE" value="OFFLINE" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="轮播图图片">
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png"
+                      @change="onBannerFileChange"
+                    />
+                    <p v-if="bannerPreview" class="preview-text">
+                      {{ bannerPreview }}
+                    </p>
+                  </el-form-item>
+                  <el-button type="primary" @click="runSafely(saveBanner)"
+                    >保存轮播图</el-button
+                  >
+                </el-form>
+              </el-card>
+            </el-col>
+            <el-col :span="14">
+              <el-card shadow="never" class="workbench-card">
+                <template #header>轮播图列表</template>
+                <template v-if="banners.length">
+                  <div
+                    class="workbench-data-list wb-list--admin-banners"
+                    role="table"
+                  >
+                    <div
+                      class="workbench-data-list__tr workbench-data-list__tr--head"
+                      role="row"
+                    >
+                      <div class="workbench-data-list__th" role="columnheader">
+                        标题
+                      </div>
+                      <div class="workbench-data-list__th" role="columnheader">
+                        状态
+                      </div>
+                      <div class="workbench-data-list__th" role="columnheader">
+                        排序
+                      </div>
+                      <div class="workbench-data-list__th" role="columnheader">
+                        图片地址
+                      </div>
+                      <div
+                        class="workbench-data-list__th workbench-data-list__cell--action"
+                        role="columnheader"
+                      >
+                        操作
+                      </div>
+                    </div>
+                    <div
+                      v-for="row in banners"
+                      :key="row.bannerId"
+                      class="workbench-data-list__tr"
+                      role="row"
+                    >
+                      <div class="workbench-data-list__td" role="cell">
+                        <span class="workbench-data-list__primary-title">{{
+                          row.title
+                        }}</span>
+                      </div>
+                      <div class="workbench-data-list__td" role="cell">
+                        {{ row.status }}
+                      </div>
+                      <div class="workbench-data-list__td" role="cell">
+                        {{ row.sort }}
+                      </div>
+                      <div
+                        class="workbench-data-list__td workbench-data-list__cell--muted admin-banner-url"
+                        role="cell"
+                        :title="String(row.imageUrl || '')"
+                      >
+                        {{ row.imageUrl }}
+                      </div>
+                      <div
+                        class="workbench-data-list__td workbench-data-list__cell--action"
+                        role="cell"
+                      >
+                        <el-button
+                          link
+                          type="danger"
+                          @click="removeBanner(row.bannerId)"
+                          >删除</el-button
+                        >
+                      </div>
+                    </div>
+                  </div>
+                </template>
+                <el-empty
+                  v-else
+                  description="暂无数据"
+                  class="workbench-data-list__empty"
+                />
+              </el-card>
+            </el-col>
+          </el-row>
+        </section>
+
+        <section v-show="activeTab === 'role'">
+          <h2 class="workbench-panel__title">
+            角色权限
+            <span class="workbench-panel__count">（{{ roles.length }}）</span>
+          </h2>
+          <p class="workbench-panel__desc">创建角色并绑定权限点。</p>
+          <el-row :gutter="16">
+            <el-col :span="10">
+              <el-card shadow="never" class="workbench-card">
+                <template #header>新增角色</template>
+                <el-form label-position="top" :model="roleForm">
+                  <el-form-item label="角色名称">
+                    <el-input v-model="roleForm.roleName" />
+                  </el-form-item>
+                  <el-form-item label="角色编码">
+                    <el-input v-model="roleForm.roleCode" />
+                  </el-form-item>
+                  <el-form-item label="权限">
+                    <el-select
+                      v-model="roleForm.permissionIds"
+                      multiple
+                      collapse-tags
+                      collapse-tags-tooltip
+                    >
+                      <el-option
+                        v-for="permission in permissions"
+                        :key="permission.permissionId"
+                        :label="permission.permissionName"
+                        :value="permission.permissionId"
+                      />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="备注">
+                    <el-input
+                      v-model="roleForm.remark"
+                      type="textarea"
+                      :rows="3"
+                    />
+                  </el-form-item>
+                  <el-button type="primary" @click="runSafely(saveRole)"
+                    >保存角色</el-button
+                  >
+                </el-form>
+              </el-card>
+            </el-col>
+            <el-col :span="14">
+              <el-card shadow="never" class="workbench-card">
+                <template #header>角色列表</template>
+                <template v-if="roles.length">
+                  <div
+                    class="workbench-data-list wb-list--admin-roles"
+                    role="table"
+                  >
+                    <div
+                      class="workbench-data-list__tr workbench-data-list__tr--head"
+                      role="row"
+                    >
+                      <div class="workbench-data-list__th" role="columnheader">
+                        角色名称
+                      </div>
+                      <div class="workbench-data-list__th" role="columnheader">
+                        角色编码
+                      </div>
+                      <div class="workbench-data-list__th" role="columnheader">
+                        权限
+                      </div>
+                      <div
+                        class="workbench-data-list__th workbench-data-list__cell--action"
+                        role="columnheader"
+                      >
+                        操作
+                      </div>
+                    </div>
+                    <div
+                      v-for="row in roles"
+                      :key="row.roleId"
+                      class="workbench-data-list__tr"
+                      role="row"
+                    >
+                      <div class="workbench-data-list__td" role="cell">
+                        <span class="workbench-data-list__primary-title">{{
+                          row.roleName
+                        }}</span>
+                      </div>
+                      <div
+                        class="workbench-data-list__td workbench-data-list__cell--muted"
+                        role="cell"
+                      >
+                        {{ row.roleCode }}
+                      </div>
+                      <div
+                        class="workbench-data-list__td workbench-data-list__cell--muted"
+                        role="cell"
+                      >
+                        {{ formatPermissionNames(row.permissionIds) }}
+                      </div>
+                      <div
+                        class="workbench-data-list__td workbench-data-list__cell--action"
+                        role="cell"
+                      >
+                        <el-button
+                          link
+                          type="danger"
+                          @click="removeRole(row.roleId)"
+                          >删除</el-button
+                        >
+                      </div>
+                    </div>
+                  </div>
+                </template>
+                <el-empty
+                  v-else
+                  description="暂无数据"
+                  class="workbench-data-list__empty"
+                />
+              </el-card>
+            </el-col>
+          </el-row>
+        </section>
+
+        <section v-show="activeTab === 'message-template'">
+          <h2 class="workbench-panel__title">消息模板</h2>
+          <p class="workbench-panel__desc">
+            维护站内信与邮件等通道的模板文案。
+          </p>
+          <div class="template-grid">
+            <el-card
+              v-for="template in messageTemplates"
+              :key="template.templateId"
+              shadow="never"
+              class="workbench-card"
+            >
+              <template #header>{{ template.type }}</template>
+              <el-form label-position="top">
+                <el-form-item label="标题模板">
+                  <el-input v-model="template.titleTemplate" />
                 </el-form-item>
-                <el-form-item label="角色编码">
-                  <el-input v-model="roleForm.roleCode" />
+                <el-form-item label="内容模板">
+                  <el-input
+                    v-model="template.contentTemplate"
+                    type="textarea"
+                    :rows="4"
+                  />
                 </el-form-item>
-                <el-form-item label="权限">
+                <el-form-item label="通道">
                   <el-select
-                    v-model="roleForm.permissionIds"
+                    v-model="template.channelList"
                     multiple
                     collapse-tags
                     collapse-tags-tooltip
                   >
-                    <el-option
-                      v-for="permission in permissions"
-                      :key="permission.permissionId"
-                      :label="permission.permissionName"
-                      :value="permission.permissionId"
-                    />
+                    <el-option label="INSITE" value="INSITE" />
+                    <el-option label="EMAIL" value="EMAIL" />
                   </el-select>
                 </el-form-item>
-                <el-form-item label="备注">
-                  <el-input
-                    v-model="roleForm.remark"
-                    type="textarea"
-                    :rows="3"
-                  />
+                <el-form-item label="状态">
+                  <el-select v-model="template.enabled">
+                    <el-option label="ACTIVE" value="ACTIVE" />
+                    <el-option label="DISABLED" value="DISABLED" />
+                  </el-select>
                 </el-form-item>
-                <el-button type="primary" @click="runSafely(saveRole)"
-                  >保存角色</el-button
+                <el-button
+                  type="primary"
+                  @click="runSafely(() => saveMessageTemplate(template))"
                 >
+                  保存模板
+                </el-button>
               </el-form>
             </el-card>
-          </el-col>
-          <el-col :span="14">
-            <el-card shadow="hover">
-              <template #header>角色列表</template>
-              <el-table :data="roles" stripe>
-                <el-table-column prop="roleName" label="角色名称" />
-                <el-table-column prop="roleCode" label="角色编码" />
-                <el-table-column label="权限">
-                  <template #default="{ row }">
-                    {{ formatPermissionNames(row.permissionIds) }}
-                  </template>
-                </el-table-column>
-                <el-table-column label="操作" width="120">
-                  <template #default="{ row }">
-                    <el-button
-                      text
-                      type="danger"
-                      @click="removeRole(row.roleId)"
-                      >删除</el-button
-                    >
-                  </template>
-                </el-table-column>
-              </el-table>
-            </el-card>
-          </el-col>
-        </el-row>
-      </el-tab-pane>
+          </div>
+        </section>
 
-      <el-tab-pane label="消息模板" name="message-template">
-        <div class="template-grid">
-          <el-card
-            v-for="template in messageTemplates"
-            :key="template.templateId"
-            shadow="hover"
-          >
-            <template #header>{{ template.type }}</template>
-            <el-form label-position="top">
-              <el-form-item label="标题模板">
-                <el-input v-model="template.titleTemplate" />
-              </el-form-item>
-              <el-form-item label="内容模板">
-                <el-input
-                  v-model="template.contentTemplate"
-                  type="textarea"
-                  :rows="4"
-                />
-              </el-form-item>
-              <el-form-item label="通道">
-                <el-select
-                  v-model="template.channelList"
-                  multiple
-                  collapse-tags
-                  collapse-tags-tooltip
-                >
-                  <el-option label="INSITE" value="INSITE" />
-                  <el-option label="EMAIL" value="EMAIL" />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="状态">
-                <el-select v-model="template.enabled">
-                  <el-option label="ACTIVE" value="ACTIVE" />
-                  <el-option label="DISABLED" value="DISABLED" />
-                </el-select>
-              </el-form-item>
-              <el-button
-                type="primary"
-                @click="runSafely(() => saveMessageTemplate(template))"
+        <section v-show="activeTab === 'audit-log'">
+          <h2 class="workbench-panel__title">
+            审核日志
+            <span class="workbench-panel__count"
+              >（{{ auditLogs.length }}）</span
+            >
+          </h2>
+          <p class="workbench-panel__desc">审核操作留痕，便于追溯。</p>
+          <el-card shadow="never" class="workbench-card">
+            <template v-if="auditLogs.length">
+              <div
+                class="workbench-data-list wb-list--admin-audit-log"
+                role="table"
               >
-                保存模板
-              </el-button>
-            </el-form>
+                <div
+                  class="workbench-data-list__tr workbench-data-list__tr--head"
+                  role="row"
+                >
+                  <div class="workbench-data-list__th" role="columnheader">
+                    业务类型
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    业务ID
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    结果
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    审核人
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    备注
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    时间
+                  </div>
+                </div>
+                <div
+                  v-for="row in auditLogs"
+                  :key="row.auditId"
+                  class="workbench-data-list__tr"
+                  role="row"
+                >
+                  <div class="workbench-data-list__td" role="cell">
+                    {{ row.bizType }}
+                  </div>
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--muted"
+                    role="cell"
+                  >
+                    {{ row.bizId }}
+                  </div>
+                  <div class="workbench-data-list__td" role="cell">
+                    {{ row.auditResult }}
+                  </div>
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--muted"
+                    role="cell"
+                  >
+                    {{ row.auditorName }}
+                  </div>
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--muted"
+                    role="cell"
+                  >
+                    {{ row.auditRemark }}
+                  </div>
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--muted"
+                    role="cell"
+                  >
+                    {{ row.createTime }}
+                  </div>
+                </div>
+              </div>
+            </template>
+            <el-empty
+              v-else
+              description="暂无数据"
+              class="workbench-data-list__empty"
+            />
           </el-card>
-        </div>
-      </el-tab-pane>
+        </section>
 
-      <el-tab-pane label="审核日志" name="audit-log">
-        <el-table :data="auditLogs" stripe>
-          <el-table-column prop="bizType" label="业务类型" width="120" />
-          <el-table-column prop="bizId" label="业务ID" width="100" />
-          <el-table-column prop="auditResult" label="结果" width="100" />
-          <el-table-column prop="auditorName" label="审核人" width="120" />
-          <el-table-column prop="auditRemark" label="备注" />
-          <el-table-column prop="createTime" label="时间" width="180" />
-        </el-table>
-      </el-tab-pane>
+        <section v-show="activeTab === 'operation-log'">
+          <h2 class="workbench-panel__title">
+            操作日志
+            <span class="workbench-panel__count"
+              >（{{ operationLogs.length }}）</span
+            >
+          </h2>
+          <p class="workbench-panel__desc">按操作人与动作筛选后台行为记录。</p>
+          <el-card shadow="never" class="workbench-card">
+            <div class="workbench-card-toolbar">
+              <el-input
+                v-model="operationLogQuery.userId"
+                placeholder="操作人ID"
+                clearable
+              />
+              <el-input
+                v-model="operationLogQuery.action"
+                placeholder="动作类型"
+                clearable
+              />
+              <el-button type="primary" @click="loadOperationLogList"
+                >查询</el-button
+              >
+            </div>
+            <template v-if="operationLogs.length">
+              <div
+                class="workbench-data-list wb-list--admin-operation-log"
+                role="table"
+              >
+                <div
+                  class="workbench-data-list__tr workbench-data-list__tr--head"
+                  role="row"
+                >
+                  <div class="workbench-data-list__th" role="columnheader">
+                    用户ID
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    操作人
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    动作
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    资源
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    说明
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    IP
+                  </div>
+                  <div class="workbench-data-list__th" role="columnheader">
+                    时间
+                  </div>
+                </div>
+                <div
+                  v-for="row in operationLogs"
+                  :key="row.logId"
+                  class="workbench-data-list__tr"
+                  role="row"
+                >
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--muted"
+                    role="cell"
+                  >
+                    {{ row.userId }}
+                  </div>
+                  <div class="workbench-data-list__td" role="cell">
+                    {{ row.userName }}
+                  </div>
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--muted"
+                    role="cell"
+                  >
+                    {{ row.action }}
+                  </div>
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--muted"
+                    role="cell"
+                  >
+                    {{ row.resource }}
+                  </div>
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--muted"
+                    role="cell"
+                  >
+                    {{ row.detail || "—" }}
+                  </div>
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--muted"
+                    role="cell"
+                  >
+                    {{ row.ip || "—" }}
+                  </div>
+                  <div
+                    class="workbench-data-list__td workbench-data-list__cell--muted"
+                    role="cell"
+                  >
+                    {{ row.createTime }}
+                  </div>
+                </div>
+              </div>
+            </template>
+            <el-empty
+              v-else
+              description="暂无数据"
+              class="workbench-data-list__empty"
+            />
+          </el-card>
+        </section>
 
-      <el-tab-pane label="操作日志" name="operation-log">
-        <div class="toolbar">
-          <el-input
-            v-model="operationLogQuery.userId"
-            placeholder="操作人ID"
-            clearable
-          />
-          <el-input
-            v-model="operationLogQuery.action"
-            placeholder="动作类型"
-            clearable
-          />
-          <el-button type="primary" @click="loadOperationLogList"
-            >查询</el-button
-          >
-        </div>
-        <el-table :data="operationLogs" stripe>
-          <el-table-column prop="userId" label="用户ID" width="100" />
-          <el-table-column prop="userName" label="操作人" width="120" />
-          <el-table-column prop="action" label="动作" width="180" />
-          <el-table-column prop="resource" label="资源" width="180" />
-          <el-table-column prop="detail" label="说明" />
-          <el-table-column prop="ip" label="IP" width="140" />
-          <el-table-column prop="createTime" label="时间" width="180" />
-        </el-table>
-      </el-tab-pane>
-
-      <el-tab-pane label="统计分析" name="statistics">
-        <div class="toolbar">
-          <el-button type="primary" @click="loadPlatformStats"
-            >刷新统计</el-button
-          >
-          <el-button @click="downloadPlatformStatistics">导出报表</el-button>
-        </div>
-        <el-row :gutter="16">
-          <el-col :span="6">
-            <div class="stat-card">
-              <strong>{{ platformStats.candidateCount }}</strong>
-              <span>个人用户数</span>
+        <section v-show="activeTab === 'statistics'">
+          <h2 class="workbench-panel__title">统计分析</h2>
+          <p class="workbench-panel__desc">
+            平台核心指标与分布数据，支持导出报表。
+          </p>
+          <el-card shadow="never" class="workbench-card">
+            <div class="workbench-card-toolbar">
+              <el-button type="primary" @click="loadPlatformStats"
+                >刷新统计</el-button
+              >
+              <el-button @click="downloadPlatformStatistics"
+                >导出报表</el-button
+              >
             </div>
-          </el-col>
-          <el-col :span="6">
-            <div class="stat-card">
-              <strong>{{ platformStats.enterpriseCount }}</strong>
-              <span>企业用户数</span>
+            <div class="overview-hero">
+              <div class="overview-card overview-card--blue">
+                <div class="overview-card__body">
+                  <p class="overview-card__value">
+                    {{ platformStats.candidateCount }}
+                  </p>
+                  <p class="overview-card__label">个人用户数</p>
+                </div>
+                <div class="overview-card__badge overview-card__badge--blue" />
+              </div>
+              <div class="overview-card overview-card--amber">
+                <div class="overview-card__body">
+                  <p class="overview-card__value">
+                    {{ platformStats.enterpriseCount }}
+                  </p>
+                  <p class="overview-card__label">企业用户数</p>
+                </div>
+                <div class="overview-card__badge overview-card__badge--amber" />
+              </div>
             </div>
-          </el-col>
-          <el-col :span="6">
-            <div class="stat-card">
-              <strong>{{ platformStats.jobCount }}</strong>
-              <span>职位总数</span>
+            <div class="overview-hero">
+              <div class="overview-card overview-card--blue">
+                <div class="overview-card__body">
+                  <p class="overview-card__value">
+                    {{ platformStats.jobCount }}
+                  </p>
+                  <p class="overview-card__label">职位总数</p>
+                </div>
+                <div class="overview-card__badge overview-card__badge--blue" />
+              </div>
+              <div class="overview-card overview-card--amber">
+                <div class="overview-card__body">
+                  <p class="overview-card__value">
+                    {{ platformStats.applyCount }}
+                  </p>
+                  <p class="overview-card__label">投递总数</p>
+                </div>
+                <div class="overview-card__badge overview-card__badge--amber" />
+              </div>
             </div>
-          </el-col>
-          <el-col :span="6">
-            <div class="stat-card">
-              <strong>{{ platformStats.applyCount }}</strong>
-              <span>投递总数</span>
+            <div class="overview-substats">
+              <div class="overview-substat">
+                <span class="overview-substat__value">{{
+                  platformStats.interviewCount
+                }}</span>
+                <span class="overview-substat__label">面试邀约数</span>
+              </div>
             </div>
-          </el-col>
-        </el-row>
-        <el-row :gutter="16" class="section-gap">
-          <el-col :span="12">
-            <el-card shadow="never">
-              <template #header>区域分布</template>
-              <el-table :data="platformStats.employmentByArea || []" stripe>
-                <el-table-column prop="area" label="区域" />
-                <el-table-column prop="count" label="人数" width="120" />
-              </el-table>
-            </el-card>
-          </el-col>
-          <el-col :span="12">
-            <el-card shadow="never">
-              <template #header>行业分布</template>
-              <el-table :data="platformStats.industryDistribution || []" stripe>
-                <el-table-column prop="industry" label="行业" />
-                <el-table-column prop="jobCount" label="职位数" width="100" />
-                <el-table-column prop="applyCount" label="投递数" width="100" />
-              </el-table>
-            </el-card>
-          </el-col>
-        </el-row>
-      </el-tab-pane>
-    </el-tabs>
+            <el-row :gutter="16" class="section-gap">
+              <el-col :span="12">
+                <el-card shadow="never" class="workbench-card">
+                  <template #header>区域分布</template>
+                  <template
+                    v-if="(platformStats.employmentByArea || []).length"
+                  >
+                    <div
+                      class="workbench-data-list wb-list--admin-stats-2"
+                      role="table"
+                    >
+                      <div
+                        class="workbench-data-list__tr workbench-data-list__tr--head"
+                        role="row"
+                      >
+                        <div
+                          class="workbench-data-list__th"
+                          role="columnheader"
+                        >
+                          区域
+                        </div>
+                        <div
+                          class="workbench-data-list__th"
+                          role="columnheader"
+                        >
+                          人数
+                        </div>
+                      </div>
+                      <div
+                        v-for="(r, idx) in platformStats.employmentByArea || []"
+                        :key="idx"
+                        class="workbench-data-list__tr"
+                        role="row"
+                      >
+                        <div class="workbench-data-list__td" role="cell">
+                          {{ r.area }}
+                        </div>
+                        <div class="workbench-data-list__td" role="cell">
+                          {{ r.count }}
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                  <el-empty
+                    v-else
+                    description="暂无数据"
+                    class="workbench-data-list__empty"
+                  />
+                </el-card>
+              </el-col>
+              <el-col :span="12">
+                <el-card shadow="never" class="workbench-card">
+                  <template #header>行业分布</template>
+                  <template
+                    v-if="(platformStats.industryDistribution || []).length"
+                  >
+                    <div
+                      class="workbench-data-list wb-list--admin-stats-3"
+                      role="table"
+                    >
+                      <div
+                        class="workbench-data-list__tr workbench-data-list__tr--head"
+                        role="row"
+                      >
+                        <div
+                          class="workbench-data-list__th"
+                          role="columnheader"
+                        >
+                          行业
+                        </div>
+                        <div
+                          class="workbench-data-list__th"
+                          role="columnheader"
+                        >
+                          职位数
+                        </div>
+                        <div
+                          class="workbench-data-list__th"
+                          role="columnheader"
+                        >
+                          投递数
+                        </div>
+                      </div>
+                      <div
+                        v-for="(r, idx) in platformStats.industryDistribution ||
+                        []"
+                        :key="idx"
+                        class="workbench-data-list__tr"
+                        role="row"
+                      >
+                        <div class="workbench-data-list__td" role="cell">
+                          {{ r.industry }}
+                        </div>
+                        <div class="workbench-data-list__td" role="cell">
+                          {{ r.jobCount }}
+                        </div>
+                        <div class="workbench-data-list__td" role="cell">
+                          {{ r.applyCount }}
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                  <el-empty
+                    v-else
+                    description="暂无数据"
+                    class="workbench-data-list__empty"
+                  />
+                </el-card>
+              </el-col>
+            </el-row>
+          </el-card>
+        </section>
+      </div>
+    </div>
 
     <el-dialog
       v-model="candidateDetailVisible"
@@ -550,37 +1271,90 @@
           }}</el-descriptions-item>
         </el-descriptions>
         <el-divider>简历治理</el-divider>
-        <el-table :data="candidateDetail.resumes || []" stripe>
-          <el-table-column prop="resumeId" label="简历ID" width="100" />
-          <el-table-column prop="title" label="标题" />
-          <el-table-column prop="privacy" label="隐私" width="120" />
-          <el-table-column label="违规检测" width="220">
-            <template #default="{ row }">
-              <span v-if="row.violationDetected" class="danger-text">
-                命中: {{ (row.violationKeywords || []).join(" / ") }}
-              </span>
-              <span v-else>未发现</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="180">
-            <template #default="{ row }">
-              <el-button
-                text
-                type="primary"
-                @click="runSafely(() => detectResumeViolation(row.resumeId))"
+        <template v-if="(candidateDetail.resumes || []).length">
+          <div
+            class="workbench-data-list wb-list--admin-resume-gov"
+            role="table"
+          >
+            <div
+              class="workbench-data-list__tr workbench-data-list__tr--head"
+              role="row"
+            >
+              <div class="workbench-data-list__th" role="columnheader">
+                简历ID
+              </div>
+              <div class="workbench-data-list__th" role="columnheader">
+                标题
+              </div>
+              <div class="workbench-data-list__th" role="columnheader">
+                隐私
+              </div>
+              <div class="workbench-data-list__th" role="columnheader">
+                违规检测
+              </div>
+              <div
+                class="workbench-data-list__th workbench-data-list__cell--action"
+                role="columnheader"
               >
-                检测
-              </el-button>
-              <el-button
-                text
-                type="danger"
-                @click="runSafely(() => cleanResumeViolation(row.resumeId))"
+                操作
+              </div>
+            </div>
+            <div
+              v-for="row in candidateDetail.resumes || []"
+              :key="row.resumeId"
+              class="workbench-data-list__tr"
+              role="row"
+            >
+              <div
+                class="workbench-data-list__td workbench-data-list__cell--muted"
+                role="cell"
               >
-                清理
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+                {{ row.resumeId }}
+              </div>
+              <div class="workbench-data-list__td" role="cell">
+                <span class="workbench-data-list__primary-title">{{
+                  row.title
+                }}</span>
+              </div>
+              <div class="workbench-data-list__td" role="cell">
+                {{ row.privacy }}
+              </div>
+              <div class="workbench-data-list__td" role="cell">
+                <span v-if="row.violationDetected" class="danger-text">
+                  命中:
+                  {{ (row.violationKeywords || []).join(" / ") }}
+                </span>
+                <span v-else class="workbench-data-list__cell--muted"
+                  >未发现</span
+                >
+              </div>
+              <div
+                class="workbench-data-list__td workbench-data-list__cell--action"
+                role="cell"
+              >
+                <div class="workbench-data-list__actions">
+                  <el-button
+                    link
+                    type="primary"
+                    @click="
+                      runSafely(() => detectResumeViolation(row.resumeId))
+                    "
+                  >
+                    检测
+                  </el-button>
+                  <el-button
+                    link
+                    type="danger"
+                    @click="runSafely(() => cleanResumeViolation(row.resumeId))"
+                  >
+                    清理
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+        <el-empty v-else description="暂无简历" />
       </template>
     </el-dialog>
   </div>
@@ -589,7 +1363,8 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
+import WorkbenchSidebar from "@/components/workbench/WorkbenchSidebar.vue";
 import {
   auditEnterprise,
   auditJob,
@@ -713,8 +1488,61 @@ interface OperationLogRecord {
   createTime: string;
 }
 
+type AdminTab =
+  | "candidate"
+  | "enterprise"
+  | "job-audit"
+  | "notice"
+  | "category"
+  | "banner"
+  | "role"
+  | "message-template"
+  | "audit-log"
+  | "operation-log"
+  | "statistics";
+
+const tabItems: { key: AdminTab; label: string }[] = [
+  { key: "candidate", label: "求职者管理" },
+  { key: "enterprise", label: "企业管理" },
+  { key: "job-audit", label: "职位审核" },
+  { key: "notice", label: "公告管理" },
+  { key: "category", label: "分类管理" },
+  { key: "banner", label: "轮播图管理" },
+  { key: "role", label: "角色权限" },
+  { key: "message-template", label: "消息模板" },
+  { key: "audit-log", label: "审核日志" },
+  { key: "operation-log", label: "操作日志" },
+  { key: "statistics", label: "统计分析" },
+];
+
 const router = useRouter();
-const activeTab = ref("candidate");
+const route = useRoute();
+const activeTab = ref<AdminTab>("candidate");
+
+function isAdminTab(s: string): s is AdminTab {
+  return tabItems.some((t) => t.key === s);
+}
+
+function selectTab(key: AdminTab) {
+  activeTab.value = key;
+  router.replace({ path: "/admin", query: { tab: key } });
+}
+
+function onWorkbenchSelect(key: string) {
+  if (isAdminTab(key)) {
+    selectTab(key);
+  }
+}
+
+watch(
+  () => route.query.tab,
+  (q) => {
+    if (typeof q === "string" && isAdminTab(q)) {
+      activeTab.value = q;
+    }
+  },
+  { immediate: true }
+);
 const candidates = ref<CandidateRecord[]>([]);
 const enterprises = ref<EnterpriseRecord[]>([]);
 const auditJobs = ref<JobAuditRecord[]>([]);
@@ -1136,52 +1964,14 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.admin-page {
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: 24px;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.page-header h1 {
-  margin: 0 0 8px;
-}
-
-.page-header p {
-  margin: 0;
-  color: #6b7280;
-}
-
-.header-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.admin-tabs {
-  background: #fff;
-  padding: 16px;
-  border-radius: 16px;
-}
-
-.toolbar {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.toolbar > * {
-  max-width: 240px;
-}
-
 .section-gap {
   margin-top: 16px;
+}
+
+.admin-banner-url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .template-grid {
@@ -1198,25 +1988,5 @@ onMounted(async () => {
 
 .danger-text {
   color: #dc2626;
-}
-
-.stat-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-height: 96px;
-  padding: 16px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #eff6ff, #f5f3ff);
-}
-
-.stat-card strong {
-  font-size: 28px;
-  color: #7c3aed;
-}
-
-.stat-card span {
-  margin-top: 8px;
-  color: #6b7280;
 }
 </style>

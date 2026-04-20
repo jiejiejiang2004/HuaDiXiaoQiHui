@@ -868,24 +868,24 @@ const showEnterprisePassword = ref(false);
 const showAdminPassword = ref(false);
 
 const candidateForm = reactive({
-  mobile: "13812345678",
+  mobile: "1",
   email: "candidate@example.com",
-  password: "Abc@123456",
+  password: "1",
   emailCode: "",
   registerEmailCode: "",
 });
 
 const enterpriseForm = reactive({
-  mobile: "13912345678",
+  mobile: "2",
   email: "enterprise@example.com",
-  password: "Abc@123456",
-  companyName: "成都校企科技有限公司",
+  password: "2",
+  companyName: "昵称2",
   emailCode: "",
 });
 
 const adminForm = reactive({
-  mobile: "18800000000",
-  password: "Admin@123456",
+  mobile: "3",
+  password: "3",
 });
 
 const resetForm = reactive({
@@ -1039,7 +1039,7 @@ async function handleEnterpriseLogin() {
     saveLoginState(
       "ENTERPRISE",
       data,
-      enterpriseForm.companyName || "企业用户",
+      String(data.userName || enterpriseForm.companyName || "企业用户"),
       "/enterprise"
     );
     ElMessage.success("登录成功");
@@ -1059,7 +1059,7 @@ async function handleEnterpriseEmailLogin() {
     saveLoginState(
       "ENTERPRISE",
       data,
-      enterpriseForm.companyName || "企业用户",
+      String(data.userName || enterpriseForm.companyName || "企业用户"),
       "/enterprise"
     );
     ElMessage.success("登录成功");
@@ -1091,7 +1091,7 @@ async function handleEnterpriseRegister() {
     saveLoginState(
       "ENTERPRISE",
       data,
-      enterpriseForm.companyName || "企业用户",
+      String(data.userName || enterpriseForm.companyName || "企业用户"),
       "/enterprise"
     );
     ElMessage.success("注册成功");

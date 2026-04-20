@@ -47,7 +47,6 @@
             <el-button
               class="swan-hero__search-btn"
               type="primary"
-              size="large"
               @click="emit('search')"
             >
               搜索职位
@@ -360,6 +359,7 @@ const statItems = computed(() => {
 }
 
 .swan-hero__search-bar {
+  --hero-search-row-height: 48px;
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
@@ -373,29 +373,46 @@ const statItems = computed(() => {
 }
 
 .swan-hero__search-field {
-  flex: 1 1 200px;
+  box-sizing: border-box;
+  flex: 1 1 148px;
+  min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 10px;
   padding: 0 14px;
   border-right: 1px solid var(--jb-border);
-  min-height: 52px;
+  height: var(--hero-search-row-height);
+  min-height: var(--hero-search-row-height);
+  max-height: var(--hero-search-row-height);
 }
 
 .swan-hero__search-field:last-of-type {
   border-right: none;
 }
 
+.swan-hero__search-field :deep(.el-input) {
+  flex: 1;
+  width: 0;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+}
+
 .swan-hero__search-field :deep(.el-input__wrapper) {
+  flex: 1;
   box-shadow: none !important;
   background: transparent;
   padding-left: 0;
+  min-height: 0 !important;
+  height: 100% !important;
+  align-items: center;
 }
 
 .swan-hero__field-ico {
   width: 20px;
   height: 20px;
   flex-shrink: 0;
+  align-self: center;
   opacity: 0.5;
   background: var(--jb-text-muted);
   mask-size: contain;
@@ -412,12 +429,18 @@ const statItems = computed(() => {
 }
 
 .swan-hero__search-btn {
+  box-sizing: border-box;
   flex: 0 0 auto;
-  min-height: 52px;
-  padding: 0 28px;
+  align-self: stretch;
+  height: var(--hero-search-row-height);
+  min-height: var(--hero-search-row-height);
+  max-height: var(--hero-search-row-height);
+  padding: 0 24px;
   border-radius: 0 !important;
   font-weight: 700;
+  font-size: 0.9375rem;
   letter-spacing: 0.02em;
+  line-height: 1.2;
 }
 
 .swan-hero__visual {
@@ -526,18 +549,50 @@ const statItems = computed(() => {
   }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 720px) {
+  .swan-hero__wrap {
+    padding: 32px 16px 28px;
+  }
+
   .swan-hero__search-bar {
-    flex-direction: column;
+    --hero-search-row-height: 44px;
+    max-width: none;
+    gap: 0;
   }
 
   .swan-hero__search-field {
+    padding: 0 10px;
+    gap: 8px;
+  }
+
+  .swan-hero__field-ico {
+    width: 18px;
+    height: 18px;
+  }
+
+  .swan-hero__search-btn {
+    padding: 0 16px;
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .swan-hero__search-bar {
+    --hero-search-row-height: 44px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .swan-hero__search-field {
+    flex: 0 0 auto;
+    width: 100%;
     border-right: none;
     border-bottom: 1px solid var(--jb-border);
   }
 
   .swan-hero__search-btn {
     width: 100%;
+    flex: 0 0 auto;
   }
 }
 </style>

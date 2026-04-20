@@ -660,6 +660,13 @@ export const MOCK_RESUME_LIST_ITEM = {
   isDefault: true,
 };
 
+/** Mock 专用账号：手机号/密码/登录后展示名（个人中心数据随登录切换） */
+export const MOCK_TEST_LOGIN = {
+  candidate: { mobile: "1", password: "1", userName: "昵称1" },
+  enterprise: { mobile: "2", password: "2", userName: "昵称2" },
+  admin: { mobile: "3", password: "3", userName: "昵称3" },
+} as const;
+
 export const MOCK_RESUME_DETAIL = {
   resumeId: 7001,
   title: "校招-Java 开发",
@@ -700,6 +707,22 @@ export const MOCK_RESUME_DETAIL = {
   ],
 };
 
+export const MOCK_RESUME_DETAIL_TEST_1 = {
+  ...MOCK_RESUME_DETAIL,
+  title: "昵称1-默认简历",
+  basicInfo: {
+    ...MOCK_RESUME_DETAIL.basicInfo,
+    name: "昵称1",
+    email: "candidate1@mock.local",
+  },
+};
+
+export const MOCK_RESUME_LIST_ITEM_TEST_1 = {
+  resumeId: 7001,
+  title: "昵称1-默认简历",
+  isDefault: true,
+};
+
 export const MOCK_PROFILE = {
   name: "张同学",
   mobile: "138****5678",
@@ -709,41 +732,171 @@ export const MOCK_PROFILE = {
   currentCity: "成都",
 };
 
+export const MOCK_PROFILE_TEST_CANDIDATE_1 = {
+  name: "昵称1",
+  mobile: "1*********",
+  email: "candidate1@mock.local",
+  school: "示例大学",
+  major: "计算机科学与技术",
+  currentCity: "北京",
+};
+
 export const MOCK_APPLY_LIST = [
   {
     applyId: 3001,
+    jobId: 901,
     jobName: "Java 后端开发工程师",
     companyName: "成都校企科技有限公司",
+    location: "成都·高新区",
+    salaryMin: 12000,
+    salaryMax: 20000,
+    jobType: "全职",
     status: "SUBMITTED",
     applyTime: "2026-04-10 10:20:00",
   },
   {
     applyId: 3002,
+    jobId: 902,
     jobName: "前端开发工程师（Vue3）",
     companyName: "华地数字科技",
+    location: "成都·郫都区",
+    salaryMin: 10000,
+    salaryMax: 18000,
+    jobType: "远程",
     status: "INVITED",
     applyTime: "2026-04-12 15:08:00",
   },
+  {
+    applyId: 3003,
+    jobId: 905,
+    jobName: "UI/UX 设计师",
+    companyName: "像素工场设计",
+    location: "成都·武侯区",
+    salaryMin: 8000,
+    salaryMax: 14000,
+    jobType: "全职",
+    status: "SUBMITTED",
+    applyTime: "2026-04-08 09:15:00",
+  },
+  {
+    applyId: 3004,
+    jobId: 906,
+    jobName: "测试工程师（自动化）",
+    companyName: "质效科技",
+    location: "成都·双流区",
+    salaryMin: 9000,
+    salaryMax: 15000,
+    jobType: "全职",
+    status: "REJECTED",
+    applyTime: "2026-04-01 14:30:00",
+  },
+  {
+    applyId: 3005,
+    jobId: 907,
+    jobName: "数据分析师",
+    companyName: "慧数咨询",
+    location: "成都·锦江区",
+    salaryMin: 11000,
+    salaryMax: 18000,
+    jobType: "全职",
+    status: "REJECTED",
+    applyTime: "2026-03-28 11:05:00",
+  },
+  {
+    applyId: 3006,
+    jobId: 908,
+    jobName: "运维工程师（DevOps）",
+    companyName: "基石云服",
+    location: "成都·高新区",
+    salaryMin: 13000,
+    salaryMax: 20000,
+    jobType: "全职",
+    status: "REJECTED",
+    applyTime: "2026-03-20 09:40:00",
+  },
 ];
 
+/** 与后端 GET /messages 的 list 项一致；job* 为可选扩展（真实接口暂无，联调后可由后端 JOIN 返回） */
 export const MOCK_MESSAGES = {
   list: [
     {
       messageId: 8001,
-      title: "投递已送达",
-      content: "您投递的「Java 后端开发工程师」已被企业查看。",
+      type: "REPLY",
+      title: "简历状态已更新",
+      content: "您的投递状态已更新为: INVITED，备注: 请携带作品集参加面试。",
+      bizId: 3001,
+      jobId: 901,
+      jobName: "Java 后端开发工程师",
+      companyName: "成都校企科技有限公司",
+      location: "成都·高新区",
+      salaryMin: 12000,
+      salaryMax: 20000,
+      jobType: "全职",
       createTime: "2026-04-11 09:00:00",
       readStatus: "READ",
     },
     {
       messageId: 8002,
-      title: "面试邀约",
-      content: "企业向您发起了面试邀约，请尽快在个人中心查看详情。",
+      type: "INTERVIEW",
+      title: "收到新的面试邀约",
+      content:
+        "Java 后端开发工程师 面试时间：2026-04-20 14:00:00，面试地点：高新区天府大道北段 88 号 A 座 12 楼。联系人：王 HR（138****0000）。",
+      bizId: 5001,
+      jobId: 901,
+      jobName: "Java 后端开发工程师",
+      companyName: "成都校企科技有限公司",
+      location: "成都·高新区",
+      salaryMin: 12000,
+      salaryMax: 20000,
+      jobType: "全职",
       createTime: "2026-04-15 11:30:00",
       readStatus: "UNREAD",
     },
+    {
+      messageId: 8003,
+      type: "REPLY",
+      title: "简历状态已更新",
+      content:
+        "您的投递状态已更新为: REJECTED，备注: 该岗位编制已满，感谢关注。",
+      bizId: 3004,
+      jobId: 906,
+      jobName: "测试工程师（自动化）",
+      companyName: "质效科技",
+      location: "成都·双流区",
+      salaryMin: 9000,
+      salaryMax: 15000,
+      jobType: "全职",
+      createTime: "2026-04-09 16:20:00",
+      readStatus: "READ",
+    },
+    {
+      messageId: 8004,
+      type: "SYSTEM",
+      title: "入职提醒",
+      content:
+        "您已确认录用「产品经理（校招方向）」，请于 2026-05-06 09:30 前携带身份证、学历证明至 HR 办理入职手续。地址：成都市高新区菁蓉汇 B 座 3 层。",
+      bizId: 903,
+      jobId: 903,
+      jobName: "产品经理（校招方向）",
+      companyName: "校企慧平台运营中心",
+      location: "成都",
+      salaryMin: 9000,
+      salaryMax: 15000,
+      jobType: "全职",
+      createTime: "2026-04-16 10:00:00",
+      readStatus: "READ",
+    },
   ],
+  total: 4,
+  pageNum: 1,
+  pageSize: 10,
   unreadCount: 1,
+  byType: {
+    INTERVIEW: 1,
+    REPLY: 0,
+    SYSTEM: 0,
+    APPLY: 0,
+  },
 };
 
 export const MOCK_FAVORITE_JOBS = [
@@ -754,19 +907,46 @@ export const MOCK_FAVORITE_JOBS = [
     location: "成都",
     salaryMin: 9000,
     salaryMax: 15000,
+    jobType: "全职",
+    collectedAt: "2026-04-05 18:40:00",
+  },
+  {
+    jobId: 904,
+    jobName: "测试工程师",
+    companyName: "成都校企科技有限公司",
+    location: "成都·高新区",
+    salaryMin: 8000,
+    salaryMax: 13000,
+    jobType: "实习",
+    collectedAt: "2026-04-11 14:22:00",
   },
 ];
+
+function buildMockApplyTrendDays(): Array<{ day: string; count: number }> {
+  const out: Array<{ day: string; count: number }> = [];
+  const end = new Date(2026, 3, 18);
+  for (let i = 0; i < 119; i++) {
+    const d = new Date(end);
+    d.setDate(d.getDate() - i);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const seed = (i * 17 + d.getDate()) % 11;
+    const count =
+      seed < 4 ? 0 : seed < 6 ? 1 : seed < 8 ? 2 : seed < 10 ? 3 : 4 + (i % 3);
+    if (count > 0) {
+      out.push({ day: `${y}-${m}-${day}`, count });
+    }
+  }
+  return out;
+}
 
 export const MOCK_CANDIDATE_STATS = {
   applyCount: 12,
   interviewCount: 2,
   viewedCount: 28,
   favoriteCount: 5,
-  applyTrend: [
-    { day: "2026-04-14", count: 2 },
-    { day: "2026-04-15", count: 1 },
-    { day: "2026-04-16", count: 3 },
-  ],
+  applyTrend: buildMockApplyTrendDays(),
 };
 
 export const MOCK_ENTERPRISE_INFO = {
@@ -785,6 +965,15 @@ export const MOCK_ENTERPRISE_INFO = {
   logoFileUrl: "",
 };
 
+export const MOCK_ENTERPRISE_INFO_TEST_2 = {
+  ...MOCK_ENTERPRISE_INFO,
+  companyName: "昵称2",
+  introduction:
+    "Mock 企业账号（手机 2 / 密码 2），用于调试企业端个人资料展示。",
+  creditCode: "91510100MA6MOCK002",
+  legalPerson: "昵称2",
+};
+
 export const MOCK_ENTERPRISE_AUTH = {
   authStatus: "PASS",
   rejectReason: "",
@@ -797,6 +986,8 @@ export const MOCK_ENTERPRISE_JOBS = [
     status: "RECRUITING",
     applyCount: 6,
     publishTime: "2026-04-01 10:00:00",
+    jobCategory: "全职",
+    recruitEndDate: "2026-05-15",
   },
   {
     jobId: 904,
@@ -804,6 +995,17 @@ export const MOCK_ENTERPRISE_JOBS = [
     status: "PENDING",
     applyCount: 0,
     publishTime: "2026-04-17 14:30:00",
+    jobCategory: "全职",
+    recruitEndDate: "2026-06-01",
+  },
+  {
+    jobId: 905,
+    jobName: "前端开发实习生",
+    status: "OFFLINE",
+    applyCount: 12,
+    publishTime: "2026-03-10 09:00:00",
+    jobCategory: "实习",
+    recruitEndDate: "2026-04-10",
   },
 ];
 
