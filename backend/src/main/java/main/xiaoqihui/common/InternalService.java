@@ -1,14 +1,14 @@
 package main.xiaoqihui.common;
 
 import main.xiaoqihui.admin.AdminMapper;
-import main.xiaoqihui.admin.AdminMessageTemplateEntity;
+import main.xiaoqihui.admin.entity.AdminMessageTemplateEntity;
 import main.xiaoqihui.common.exception.BusinessException;
 import main.xiaoqihui.common.mail.MailSenderService;
 import main.xiaoqihui.common.util.JwtUtil;
-import main.xiaoqihui.recruit.CompanyInfoEntity;
-import main.xiaoqihui.recruit.MessageEntity;
+import main.xiaoqihui.recruit.entity.CompanyInfoEntity;
+import main.xiaoqihui.recruit.entity.MessageEntity;
 import main.xiaoqihui.recruit.RecruitmentMapper;
-import main.xiaoqihui.recruit.UserEntity;
+import main.xiaoqihui.recruit.entity.UserEntity;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 

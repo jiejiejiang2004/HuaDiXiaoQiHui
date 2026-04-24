@@ -41,7 +41,7 @@ public class StatisticsService {
         data.put("applyCount", statisticsMapper.countCandidateApplies(userId));
         data.put("interviewCount", statisticsMapper.countCandidateInterviews(userId));
         data.put("viewedCount", statisticsMapper.countCandidateViews(userId));
-        data.put("favoriteCount", 0);
+        data.put("favoriteCount", recruitmentMapper.countCollectedJobs(userId));
         data.put("applyTrend", statisticsMapper.candidateApplyTrend(userId, LocalDate.now().minusDays(29)));
         return data;
     }

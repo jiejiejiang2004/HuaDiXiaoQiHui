@@ -1,40 +1,67 @@
 package main.xiaoqihui.admin;
 
+import lombok.Data;
+
 import java.time.LocalDateTime;
 
+/**
+ * 管理员职位审核视图类
+ * 用于展示职位审核的详细信息
+ */
+@Data
 public class AdminJobAuditView {
+    /**
+     * 职位ID
+     */
     private Long jobId;
+    
+    /**
+     * 企业ID
+     */
     private Long enterpriseId;
+    
+    /**
+     * 公司名称
+     */
     private String companyName;
+    
+    /**
+     * 职位名称
+     */
     private String jobName;
+    
+    /**
+     * 职位分类
+     */
     private String jobCategory;
+    
+    /**
+     * 工作地点
+     */
     private String location;
+    
+    /**
+     * 最低薪资
+     */
     private Integer salaryMin;
+    
+    /**
+     * 最高薪资
+     */
     private Integer salaryMax;
+    
+    /**
+     * 状态
+     */
     private String status;
+    
+    /**
+     * 审核备注
+     */
     private String auditRemark;
+    
+    /**
+     * 创建时间
+     */
     private LocalDateTime createTime;
-
-    public Long getJobId() { return jobId; }
-    public void setJobId(Long jobId) { this.jobId = jobId; }
-    public Long getEnterpriseId() { return enterpriseId; }
-    public void setEnterpriseId(Long enterpriseId) { this.enterpriseId = enterpriseId; }
-    public String getCompanyName() { return companyName; }
-    public void setCompanyName(String companyName) { this.companyName = companyName; }
-    public String getJobName() { return jobName; }
-    public void setJobName(String jobName) { this.jobName = jobName; }
-    public String getJobCategory() { return jobCategory; }
-    public void setJobCategory(String jobCategory) { this.jobCategory = jobCategory; }
-    public String getLocation() { return location; }
-    public void setLocation(String location) { this.location = location; }
-    public Integer getSalaryMin() { return salaryMin; }
-    public void setSalaryMin(Integer salaryMin) { this.salaryMin = salaryMin; }
-    public Integer getSalaryMax() { return salaryMax; }
-    public void setSalaryMax(Integer salaryMax) { this.salaryMax = salaryMax; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-    public String getAuditRemark() { return auditRemark; }
-    public void setAuditRemark(String auditRemark) { this.auditRemark = auditRemark; }
-    public LocalDateTime getCreateTime() { return createTime; }
-    public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
 }

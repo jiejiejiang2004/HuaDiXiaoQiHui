@@ -149,7 +149,10 @@
                   <el-row :gutter="12">
                     <el-col :xs="24" :sm="12">
                       <el-form-item label="姓名">
-                        <el-input :model-value="profile.name || '—'" disabled />
+                        <el-input
+                          v-model="profileForm.name"
+                          placeholder="请输入姓名"
+                        />
                       </el-form-item>
                     </el-col>
                     <el-col :xs="24" :sm="12">
@@ -1306,6 +1309,7 @@ interface ResumeForm {
 
 const profile = reactive<CandidateProfile>({});
 const profileForm = reactive({
+  name: "",
   email: "",
   school: "",
   major: "",
@@ -1545,6 +1549,7 @@ const resumeForm = reactive<ResumeForm>({
 async function loadProfile() {
   const data = await getProfile();
   Object.assign(profile, data);
+  profileForm.name = data.name || "";
   profileForm.email = data.email || "";
   profileForm.school = data.school || "";
   profileForm.major = data.major || "";
@@ -1581,8 +1586,8 @@ async function saveProfile() {
 }
 
 async function saveResume() {
-  resumeForm.basicInfo.mobile =
-    profile.mobile?.replace(/\*/g, "") || resumeForm.basicInfo.mobile;
+  // resumeForm.basicInfo.mobile =
+  //   profile.mobile?.replace(/\*/g, "") || resumeForm.basicInfo.mobile;
   if (resumeId.value) {
     await updateResume(resumeId.value, resumeForm);
   } else {

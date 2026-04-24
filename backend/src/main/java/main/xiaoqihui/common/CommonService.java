@@ -8,11 +8,12 @@ import main.xiaoqihui.common.exception.BusinessException;
 import main.xiaoqihui.common.mail.MailSenderService;
 import main.xiaoqihui.common.queue.TaskQueueService;
 import main.xiaoqihui.common.util.SecurityUtils;
-import main.xiaoqihui.common.util.SecurityUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.security.SecureRandom;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -80,11 +81,22 @@ public class CommonService {
         this.emailCodePrefix = emailCodePrefix;
     }
 
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private static final int CODE_LENGTH = 6;
+
     public Map<String, Object> sendEmailCode(EmailSendRequest request) {
-        String debugCode = "123456";
-        redisTokenStore.saveEmailCode(buildEmailKey(request.email(), request.scene()), debugCode, Duration.ofMinutes(5));
-        taskQueueService.submit("email-code-send", () -> mailSenderService.sendVerificationCode(request.email(), request.scene(), debugCode));
-        return Map.of("expireSeconds", 300, "debugCode", debugCode);
+        String verificationCode = generateRandomCode();
+        redisTokenStore.saveEmailCode(buildEmailKey(request.email(), request.scene()), verificationCode, Duration.ofMinutes(5));
+        taskQueueService.submit("email-code-send", () -> mailSenderService.sendVerificationCode(request.email(), request.scene(), verificationCode));
+        return Map.of("expireSeconds", 300);
+    }
+
+    private String generateRandomCode() {
+        StringBuilder code = new StringBuilder(CODE_LENGTH);
+        for (int i = 0; i < CODE_LENGTH; i++) {
+            code.append(RANDOM.nextInt(10));
+        }
+        return code.toString();
     }
 
     public void validateEmailCode(String email, String scene, String emailCode) {
@@ -211,7 +223,7 @@ public class CommonService {
             throw new BusinessException(7002, "文件格式不支持");
         }
         String lowerType = extension.toLowerCase();
-        if ("RESUME".equalsIgnoreCase(bizType)) {
+        if (Set.of("RESUME", "RESUME_ATTACHMENT").contains(bizType.toUpperCase())) {
             if (!RESUME_TYPES.contains(lowerType)) {
                 throw new BusinessException(7002, "文件格式不支持");
             }

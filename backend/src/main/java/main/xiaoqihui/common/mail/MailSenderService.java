@@ -33,11 +33,16 @@ public class MailSenderService {
 
     public void sendHtmlEmail(String email, String subject, String html) {
         JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
-        if (mailSender == null || !StringUtils.hasText(fromAddress)) {
-            log.info("邮件发送模拟: to={}, subject={}, html={}", email, subject, html);
+        if (mailSender == null) {
+            log.warn("邮件发送器未配置，跳过发送: to={}, subject={}", email, subject);
+            return;
+        }
+        if (!StringUtils.hasText(fromAddress)) {
+            log.warn("发件人地址未配置，跳过发送: to={}, subject={}", email, subject);
             return;
         }
         try {
+            log.info("开始发送邮件: from={}, to={}, subject={}", fromAddress, email, subject);
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(fromAddress);
@@ -45,8 +50,9 @@ public class MailSenderService {
             helper.setSubject(subject);
             helper.setText(html, true);
             mailSender.send(message);
+            log.info("邮件发送成功: to={}", email);
         } catch (Exception ex) {
-            log.error("邮件发送失败: to={}, subject={}", email, subject, ex);
+            log.error("邮件发送失败: to={}, subject={}, 错误信息: {}", email, subject, ex.getMessage(), ex);
         }
     }
 

@@ -1,5 +1,6 @@
 package main.xiaoqihui.recruit;
 
+import main.xiaoqihui.recruit.entity.*;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
@@ -43,6 +44,7 @@ public interface RecruitmentMapper {
         update sys_user
         <set>
             <if test="avatar != null">avatar = #{avatar},</if>
+            <if test="realName != null">real_name = #{realName},</if>
             <if test="email != null">email = #{email},</if>
             <if test="school != null">school = #{school},</if>
             <if test="major != null">major = #{major},</if>

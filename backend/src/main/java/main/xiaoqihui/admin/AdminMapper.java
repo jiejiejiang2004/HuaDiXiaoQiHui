@@ -1,7 +1,8 @@
 package main.xiaoqihui.admin;
 
-import main.xiaoqihui.recruit.CompanyAuthEntity;
-import main.xiaoqihui.recruit.UserEntity;
+import main.xiaoqihui.admin.entity.*;
+import main.xiaoqihui.recruit.entity.CompanyAuthEntity;
+import main.xiaoqihui.recruit.entity.UserEntity;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
@@ -15,9 +16,23 @@ import java.util.List;
 @Mapper
 public interface AdminMapper {
 
+    /**
+     * 根据手机号码查找用户
+     * @param mobile 手机号码
+     * @return 用户实体
+     */
     @Select("select * from sys_user where mobile = #{mobile} limit 1")
     UserEntity findUserByMobile(String mobile);
 
+    /**
+     * 列出候选人列表
+     * @param keyword 关键词（姓名或手机号）
+     * @param identity 身份类型
+     * @param status 状态
+     * @param offset 偏移量
+     * @param limit 限制数量
+     * @return 候选人视图列表
+     */
     @Select("""
         <script>
         select user_id, mobile, real_name, identity_type, status, school, major, current_city, create_time
@@ -44,6 +59,13 @@ public interface AdminMapper {
         @Param("limit") int limit
     );
 
+    /**
+     * 统计候选人数量
+     * @param keyword 关键词（姓名或手机号）
+     * @param identity 身份类型
+     * @param status 状态
+     * @return 候选人数量
+     */
     @Select("""
         <script>
         select count(1)
@@ -62,12 +84,32 @@ public interface AdminMapper {
         """)
     long countCandidates(@Param("keyword") String keyword, @Param("identity") String identity, @Param("status") String status);
 
+    /**
+     * 根据ID查找候选人用户
+     * @param userId 用户ID
+     * @return 用户实体
+     */
     @Select("select * from sys_user where user_id = #{userId} and user_type = 'CANDIDATE' limit 1")
     UserEntity findCandidateById(Long userId);
 
+    /**
+     * 更新用户状态
+     * @param userId 用户ID
+     * @param status 状态
+     * @return 影响行数
+     */
     @Update("update sys_user set status = #{status}, update_time = now() where user_id = #{userId}")
     int updateUserStatus(@Param("userId") Long userId, @Param("status") String status);
 
+    /**
+     * 列出企业列表
+     * @param keyword 关键词（公司名称）
+     * @param authStatus 认证状态
+     * @param status 状态
+     * @param offset 偏移量
+     * @param limit 限制数量
+     * @return 企业视图列表
+     */
     @Select("""
         <script>
         select ci.enterprise_id, ci.user_id, ci.company_name, ci.industry, ci.scale, ci.address, ci.introduction,

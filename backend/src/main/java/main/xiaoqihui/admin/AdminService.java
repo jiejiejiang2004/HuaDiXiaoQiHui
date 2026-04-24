@@ -1,18 +1,19 @@
 package main.xiaoqihui.admin;
 
 import jakarta.servlet.http.HttpServletRequest;
+import main.xiaoqihui.admin.entity.*;
 import main.xiaoqihui.common.CommonService;
 import main.xiaoqihui.common.auth.RedisTokenStore;
 import main.xiaoqihui.common.domain.FileRecordEntity;
 import main.xiaoqihui.common.exception.BusinessException;
 import main.xiaoqihui.common.security.LoginUser;
 import main.xiaoqihui.common.util.JwtUtil;
-import main.xiaoqihui.recruit.CompanyAuthEntity;
+import main.xiaoqihui.recruit.entity.CompanyAuthEntity;
 import main.xiaoqihui.common.util.SecurityUtils;
-import main.xiaoqihui.recruit.MessageEntity;
+import main.xiaoqihui.recruit.entity.MessageEntity;
 import main.xiaoqihui.recruit.RecruitmentMapper;
-import main.xiaoqihui.recruit.ResumeEntity;
-import main.xiaoqihui.recruit.UserEntity;
+import main.xiaoqihui.recruit.entity.ResumeEntity;
+import main.xiaoqihui.recruit.entity.UserEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

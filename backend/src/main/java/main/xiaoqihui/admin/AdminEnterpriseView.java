@@ -1,43 +1,72 @@
 package main.xiaoqihui.admin;
 
+import lombok.Data;
+
 import java.time.LocalDateTime;
 
+/**
+ * 管理员企业视图类
+ * 用于展示企业的详细信息
+ */
+@Data
 public class AdminEnterpriseView {
+    /**
+     * 企业ID
+     */
     private Long enterpriseId;
+    
+    /**
+     * 用户ID
+     */
     private Long userId;
+    
+    /**
+     * 公司名称
+     */
     private String companyName;
+    
+    /**
+     * 行业
+     */
     private String industry;
+    
+    /**
+     * 规模
+     */
     private String scale;
+    
+    /**
+     * 地址
+     */
     private String address;
+    
+    /**
+     * 简介
+     */
     private String introduction;
+    
+    /**
+     * 认证状态
+     */
     private String authStatus;
+    
+    /**
+     * 认证备注
+     */
     private String authRemark;
+    
+    /**
+     * 状态
+     */
     private String status;
+    
+    /**
+     * 联系电话
+     */
     private String contactMobile;
+    
+    /**
+     * 创建时间
+     */
     private LocalDateTime createTime;
-
-    public Long getEnterpriseId() { return enterpriseId; }
-    public void setEnterpriseId(Long enterpriseId) { this.enterpriseId = enterpriseId; }
-    public Long getUserId() { return userId; }
-    public void setUserId(Long userId) { this.userId = userId; }
-    public String getCompanyName() { return companyName; }
-    public void setCompanyName(String companyName) { this.companyName = companyName; }
-    public String getIndustry() { return industry; }
-    public void setIndustry(String industry) { this.industry = industry; }
-    public String getScale() { return scale; }
-    public void setScale(String scale) { this.scale = scale; }
-    public String getAddress() { return address; }
-    public void setAddress(String address) { this.address = address; }
-    public String getIntroduction() { return introduction; }
-    public void setIntroduction(String introduction) { this.introduction = introduction; }
-    public String getAuthStatus() { return authStatus; }
-    public void setAuthStatus(String authStatus) { this.authStatus = authStatus; }
-    public String getAuthRemark() { return authRemark; }
-    public void setAuthRemark(String authRemark) { this.authRemark = authRemark; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-    public String getContactMobile() { return contactMobile; }
-    public void setContactMobile(String contactMobile) { this.contactMobile = contactMobile; }
-    public LocalDateTime getCreateTime() { return createTime; }
-    public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
 }

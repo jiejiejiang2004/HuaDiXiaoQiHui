@@ -11,6 +11,7 @@ import main.xiaoqihui.common.exception.BusinessException;
 import main.xiaoqihui.common.security.LoginUser;
 import main.xiaoqihui.common.util.JwtUtil;
 import main.xiaoqihui.common.util.SecurityUtils;
+import main.xiaoqihui.recruit.entity.*;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -198,6 +199,7 @@ public class RecruitmentService {
     public void updateCurrentProfile(ProfileUpdateRequest request) {
         UserEntity current = requireCurrentUser();
         current.setAvatar(request.avatar());
+        current.setRealName(request.name());
         current.setEmail(request.email());
         current.setSchool(request.school());
         current.setMajor(request.major());

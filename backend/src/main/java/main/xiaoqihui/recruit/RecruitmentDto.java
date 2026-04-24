@@ -58,6 +58,7 @@ record RefreshTokenRequest(
 
 record ProfileUpdateRequest(
     String avatar,
+    String name,
     String email,
     String school,
     String major,

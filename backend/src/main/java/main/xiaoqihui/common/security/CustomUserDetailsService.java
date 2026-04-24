@@ -1,7 +1,7 @@
 package main.xiaoqihui.common.security;
 
 import main.xiaoqihui.recruit.RecruitmentMapper;
-import main.xiaoqihui.recruit.UserEntity;
+import main.xiaoqihui.recruit.entity.UserEntity;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
