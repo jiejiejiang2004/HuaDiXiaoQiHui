@@ -88,6 +88,9 @@ public class RecruitmentService {
     public Map<String, Object> candidateLogin(LoginRequest request) {
         authenticate(request.mobile(), request.password());
         UserEntity user = getUserByMobile(request.mobile());
+        if (!request.email().equalsIgnoreCase(user.getEmail())) {
+            throw new BusinessException(2003, "邮箱与账号不匹配");
+        }
         if (!"CANDIDATE".equals(user.getUserType())) {
             throw new BusinessException(2002, "当前账号不是个人求职者账号");
         }
@@ -143,6 +146,9 @@ public class RecruitmentService {
     public Map<String, Object> enterpriseLogin(LoginRequest request) {
         authenticate(request.mobile(), request.password());
         UserEntity user = getUserByMobile(request.mobile());
+        if (!request.email().equalsIgnoreCase(user.getEmail())) {
+            throw new BusinessException(2003, "邮箱与账号不匹配");
+        }
         if (!"ENTERPRISE".equals(user.getUserType())) {
             throw new BusinessException(2002, "当前账号不是企业账号");
         }

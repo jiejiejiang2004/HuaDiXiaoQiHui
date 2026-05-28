@@ -868,24 +868,24 @@ const showEnterprisePassword = ref(false);
 const showAdminPassword = ref(false);
 
 const candidateForm = reactive({
-  mobile: "1",
-  email: "candidate@example.com",
-  password: "1",
+  mobile: "",
+  email: "",
+  password: "",
   emailCode: "",
   registerEmailCode: "",
 });
 
 const enterpriseForm = reactive({
-  mobile: "2",
-  email: "enterprise@example.com",
-  password: "2",
-  companyName: "昵称2",
+  mobile: "",
+  email: "",
+  password: "",
+  companyName: "",
   emailCode: "",
 });
 
 const adminForm = reactive({
-  mobile: "3",
-  password: "3",
+  mobile: "",
+  password: "",
 });
 
 const resetForm = reactive({
@@ -970,10 +970,19 @@ async function runSafely(task: () => Promise<void>) {
 }
 
 async function handleCandidateLogin() {
+  if (
+    !candidateForm.mobile ||
+    !candidateForm.email ||
+    !candidateForm.password
+  ) {
+    ElMessage.warning("请填写完整的手机号、邮箱和密码");
+    return;
+  }
   candidateLoading.value = true;
   try {
     const data = await candidateLogin({
       mobile: candidateForm.mobile,
+      email: candidateForm.email,
       password: candidateForm.password,
     });
     saveLoginState(
@@ -1030,10 +1039,19 @@ async function handleCandidateRegister() {
 }
 
 async function handleEnterpriseLogin() {
+  if (
+    !enterpriseForm.mobile ||
+    !enterpriseForm.email ||
+    !enterpriseForm.password
+  ) {
+    ElMessage.warning("请填写完整的手机号、邮箱和密码");
+    return;
+  }
   enterpriseLoading.value = true;
   try {
     const data = await enterpriseLogin({
       mobile: enterpriseForm.mobile,
+      email: enterpriseForm.email,
       password: enterpriseForm.password,
     });
     saveLoginState(

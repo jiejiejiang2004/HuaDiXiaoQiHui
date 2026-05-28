@@ -23,6 +23,7 @@ record CandidateRegisterRequest(
 
 record LoginRequest(
     @NotBlank String mobile,
+    @Email @NotBlank String email,
     @NotBlank String password
 ) {
 }
